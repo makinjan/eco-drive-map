@@ -1,4 +1,4 @@
-import type { FeatureCollection, Feature, Polygon } from 'geojson';
+import type { FeatureCollection, Polygon } from 'geojson';
 
 export interface ZBEProperties {
   id: string;
@@ -8,77 +8,180 @@ export interface ZBEProperties {
   valid_to: string;
 }
 
+/**
+ * ZBE data verified against official sources (Feb 2026):
+ * - Ayuntamiento de Madrid (madrid.es, madrid360.es)
+ * - AMB Barcelona (zbe.barcelona)
+ * - MITECO (miteco.gob.es)
+ * - ecociudades.es
+ *
+ * Key rules:
+ * - Madrid: todo el municipio es ZBE (solo SIN ETIQUETA restringido).
+ *   ZBEDEP Centro y Plaza Elíptica: solo CERO y ECO.
+ * - Barcelona (Cataluña): B restringida desde 2026.
+ * - Resto de ciudades: generalmente solo SIN ETIQUETA restringido.
+ */
 export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
   type: 'FeatureCollection',
   features: [
+    // ==========================================
+    // MADRID
+    // ==========================================
     {
       type: 'Feature',
       properties: {
         id: 'ZBE_MADRID',
-        name: 'Madrid Central (Madrid 360)',
-        allowed_tags: ['CERO', 'ECO'],
-        valid_from: '2024-01-01',
+        name: 'ZBE Madrid (todo el municipio)',
+        allowed_tags: ['CERO', 'ECO', 'C', 'B'],
+        valid_from: '2022-01-01',
         valid_to: '2030-12-31',
       },
       geometry: {
         type: 'Polygon',
         coordinates: [
           [
-            [-3.7150, 40.4280],
-            [-3.7080, 40.4290],
-            [-3.6990, 40.4270],
-            [-3.6930, 40.4240],
-            [-3.6910, 40.4200],
-            [-3.6920, 40.4160],
-            [-3.6960, 40.4130],
-            [-3.7020, 40.4110],
-            [-3.7100, 40.4120],
-            [-3.7160, 40.4150],
-            [-3.7180, 40.4200],
-            [-3.7170, 40.4250],
-            [-3.7150, 40.4280],
+            // Approximate M-40 ring (whole municipality ZBE)
+            [-3.7700, 40.5000],
+            [-3.7400, 40.5050],
+            [-3.7100, 40.5020],
+            [-3.6800, 40.4950],
+            [-3.6500, 40.4850],
+            [-3.6300, 40.4700],
+            [-3.6200, 40.4500],
+            [-3.6150, 40.4300],
+            [-3.6200, 40.4100],
+            [-3.6300, 40.3900],
+            [-3.6500, 40.3750],
+            [-3.6800, 40.3650],
+            [-3.7100, 40.3600],
+            [-3.7400, 40.3620],
+            [-3.7700, 40.3700],
+            [-3.7900, 40.3850],
+            [-3.8000, 40.4050],
+            [-3.8050, 40.4250],
+            [-3.8020, 40.4500],
+            [-3.7900, 40.4750],
+            [-3.7700, 40.5000],
           ],
         ],
       },
     },
+    {
+      type: 'Feature',
+      properties: {
+        id: 'ZBEDEP_MADRID_CENTRO',
+        name: 'ZBEDEP Distrito Centro (Madrid)',
+        allowed_tags: ['CERO', 'ECO'],
+        valid_from: '2018-11-30',
+        valid_to: '2030-12-31',
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            // Perímetro: Alberto Aguilera - Carranza - Sagasta - Génova -
+            // Colón - Recoletos - Paseo del Prado - Ronda de Atocha -
+            // Ronda de Valencia - Ronda de Toledo - Gran Vía de San Francisco -
+            // Bailén - Plaza de España - Princesa - Alberto Aguilera
+            [-3.7138, 40.4260],
+            [-3.7070, 40.4270],
+            [-3.7000, 40.4255],
+            [-3.6945, 40.4230],
+            [-3.6920, 40.4195],
+            [-3.6925, 40.4160],
+            [-3.6955, 40.4135],
+            [-3.7010, 40.4115],
+            [-3.7085, 40.4120],
+            [-3.7140, 40.4145],
+            [-3.7165, 40.4190],
+            [-3.7160, 40.4230],
+            [-3.7138, 40.4260],
+          ],
+        ],
+      },
+    },
+    {
+      type: 'Feature',
+      properties: {
+        id: 'ZBEDEP_PLAZA_ELIPTICA',
+        name: 'ZBEDEP Plaza Elíptica (Madrid)',
+        allowed_tags: ['CERO', 'ECO'],
+        valid_from: '2022-01-01',
+        valid_to: '2030-12-31',
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            // Zona alrededor de Plaza Elíptica
+            [-3.7120, 40.3870],
+            [-3.7080, 40.3880],
+            [-3.7040, 40.3875],
+            [-3.7010, 40.3860],
+            [-3.6995, 40.3840],
+            [-3.6990, 40.3815],
+            [-3.7000, 40.3790],
+            [-3.7025, 40.3775],
+            [-3.7060, 40.3765],
+            [-3.7095, 40.3770],
+            [-3.7125, 40.3785],
+            [-3.7140, 40.3810],
+            [-3.7140, 40.3840],
+            [-3.7130, 40.3860],
+            [-3.7120, 40.3870],
+          ],
+        ],
+      },
+    },
+
+    // ==========================================
+    // BARCELONA (Cataluña - B restringida desde 2026)
+    // ==========================================
     {
       type: 'Feature',
       properties: {
         id: 'ZBE_BARCELONA',
         name: 'ZBE Rondes de Barcelona',
         allowed_tags: ['CERO', 'ECO', 'C'],
-        valid_from: '2024-01-01',
+        valid_from: '2020-01-01',
         valid_to: '2030-12-31',
       },
       geometry: {
         type: 'Polygon',
         coordinates: [
           [
-            [2.1100, 41.4150],
-            [2.1350, 41.4200],
-            [2.1600, 41.4180],
-            [2.1800, 41.4120],
-            [2.1900, 41.4000],
-            [2.1920, 41.3880],
-            [2.1850, 41.3750],
-            [2.1700, 41.3680],
-            [2.1500, 41.3650],
-            [2.1300, 41.3670],
-            [2.1150, 41.3750],
-            [2.1050, 41.3880],
-            [2.1030, 41.4000],
-            [2.1050, 41.4080],
-            [2.1100, 41.4150],
+            // Perímetro aproximado de las Rondas (>95 km²)
+            [2.0700, 41.4200],
+            [2.1000, 41.4300],
+            [2.1300, 41.4350],
+            [2.1600, 41.4300],
+            [2.1850, 41.4200],
+            [2.2000, 41.4050],
+            [2.2100, 41.3900],
+            [2.2100, 41.3700],
+            [2.2000, 41.3550],
+            [2.1800, 41.3450],
+            [2.1500, 41.3400],
+            [2.1200, 41.3420],
+            [2.0950, 41.3500],
+            [2.0750, 41.3650],
+            [2.0650, 41.3850],
+            [2.0620, 41.4050],
+            [2.0700, 41.4200],
           ],
         ],
       },
     },
+
+    // ==========================================
+    // RESTO DE ESPAÑA (solo SIN ETIQUETA restringido)
+    // ==========================================
     {
       type: 'Feature',
       properties: {
         id: 'ZBE_VALENCIA',
         name: 'ZBE Valencia',
-        allowed_tags: ['CERO', 'ECO', 'C'],
+        allowed_tags: ['CERO', 'ECO', 'C', 'B'],
         valid_from: '2024-01-01',
         valid_to: '2030-12-31',
       },
@@ -111,7 +214,7 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
       properties: {
         id: 'ZBE_SEVILLA',
         name: 'ZBE Sevilla',
-        allowed_tags: ['CERO', 'ECO', 'C'],
+        allowed_tags: ['CERO', 'ECO', 'C', 'B'],
         valid_from: '2024-01-01',
         valid_to: '2030-12-31',
       },
@@ -143,7 +246,7 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
       properties: {
         id: 'ZBE_MALAGA',
         name: 'ZBE Málaga',
-        allowed_tags: ['CERO', 'ECO', 'C'],
+        allowed_tags: ['CERO', 'ECO', 'C', 'B'],
         valid_from: '2024-01-01',
         valid_to: '2030-12-31',
       },
@@ -175,7 +278,7 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
       properties: {
         id: 'ZBE_BILBAO',
         name: 'ZBE Bilbao',
-        allowed_tags: ['CERO', 'ECO', 'C'],
+        allowed_tags: ['CERO', 'ECO', 'C', 'B'],
         valid_from: '2024-01-01',
         valid_to: '2030-12-31',
       },
@@ -205,40 +308,9 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
     {
       type: 'Feature',
       properties: {
-        id: 'ZBEDEP_MADRID_CENTRO',
-        name: 'ZBEDEP Distrito Centro (Madrid)',
-        allowed_tags: ['CERO', 'ECO'],
-        valid_from: '2024-01-01',
-        valid_to: '2030-12-31',
-      },
-      geometry: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [-3.7138, 40.4260],
-            [-3.7070, 40.4270],
-            [-3.7000, 40.4255],
-            [-3.6945, 40.4230],
-            [-3.6920, 40.4195],
-            [-3.6925, 40.4160],
-            [-3.6955, 40.4135],
-            [-3.7010, 40.4115],
-            [-3.7085, 40.4120],
-            [-3.7140, 40.4145],
-            [-3.7165, 40.4190],
-            [-3.7160, 40.4230],
-            [-3.7138, 40.4260],
-          ],
-        ],
-      },
-    },
-    // --- Nuevas ZBE ---
-    {
-      type: 'Feature',
-      properties: {
         id: 'ZBE_ZARAGOZA',
-        name: 'ZBE Casco Histórico Zaragoza',
-        allowed_tags: ['CERO', 'ECO', 'C'],
+        name: 'ZBE Zaragoza',
+        allowed_tags: ['CERO', 'ECO', 'C', 'B'],
         valid_from: '2024-01-01',
         valid_to: '2030-12-31',
       },
@@ -269,8 +341,8 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
       type: 'Feature',
       properties: {
         id: 'ZBE_PALMA',
-        name: 'ZBE Casco Antiguo Palma de Mallorca',
-        allowed_tags: ['CERO', 'ECO', 'C'],
+        name: 'ZBE Palma de Mallorca',
+        allowed_tags: ['CERO', 'ECO', 'C', 'B'],
         valid_from: '2025-01-01',
         valid_to: '2030-12-31',
       },
@@ -301,7 +373,7 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
       properties: {
         id: 'ZBE_CORDOBA',
         name: 'ZBE Córdoba',
-        allowed_tags: ['CERO', 'ECO', 'C'],
+        allowed_tags: ['CERO', 'ECO', 'C', 'B'],
         valid_from: '2024-01-01',
         valid_to: '2030-12-31',
       },
@@ -333,7 +405,7 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
       properties: {
         id: 'ZBE_VIGO',
         name: 'ZBE Vigo',
-        allowed_tags: ['CERO', 'ECO', 'C'],
+        allowed_tags: ['CERO', 'ECO', 'C', 'B'],
         valid_from: '2025-01-01',
         valid_to: '2030-12-31',
       },
@@ -360,12 +432,13 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
         ],
       },
     },
+    // Girona (Cataluña - B restringida)
     {
       type: 'Feature',
       properties: {
         id: 'ZBE_GIRONA',
         name: 'ZBE Girona',
-        allowed_tags: ['CERO', 'ECO', 'C', 'B'],
+        allowed_tags: ['CERO', 'ECO', 'C'],
         valid_from: '2025-09-15',
         valid_to: '2030-12-31',
       },
@@ -396,7 +469,7 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
       properties: {
         id: 'ZBE_ALICANTE',
         name: 'ZBE Alicante',
-        allowed_tags: ['CERO', 'ECO', 'C'],
+        allowed_tags: ['CERO', 'ECO', 'C', 'B'],
         valid_from: '2025-01-01',
         valid_to: '2030-12-31',
       },
@@ -428,7 +501,7 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
       properties: {
         id: 'ZBE_GRANADA',
         name: 'ZBE Granada',
-        allowed_tags: ['CERO', 'ECO', 'C'],
+        allowed_tags: ['CERO', 'ECO', 'C', 'B'],
         valid_from: '2024-01-01',
         valid_to: '2030-12-31',
       },
