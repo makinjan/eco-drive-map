@@ -119,7 +119,7 @@ const MobilePanel = ({
           <div className="px-4 pb-5 space-y-3 max-h-[60vh] overflow-y-auto">
             <TagSelector value={selectedTag} onChange={onTagChange} />
 
-            <SearchInput placeholder="Origen" onSelect={onOriginSelect} icon="origin" />
+            <SearchInput placeholder="Origen" onSelect={onOriginSelect} icon="origin" autoGeolocate />
             <SearchInput placeholder="Destino" onSelect={onDestinationSelect} icon="destination" />
 
             <Button
