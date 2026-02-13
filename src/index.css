@@ -56,6 +56,9 @@
     --tag-b: 38 92% 50%;
     --tag-sin: 220 12% 55%;
 
+    /* Alert */
+    --alert-warning: 38 92% 50%;
+
     /* Surface tokens */
     --surface-glass: 0 0% 100%;
     --glow-primary: 250 85% 60%;
@@ -101,6 +104,8 @@
 
     --route-valid: 152 60% 48%;
     --route-invalid: 0 72% 55%;
+
+    --alert-warning: 38 92% 50%;
 
     --surface-glass: 228 22% 12%;
     --glow-primary: 250 85% 65%;

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import ProximityAlertBanner from './ProximityAlertBanner';
 import { Button } from '@/components/ui/button';
 import TagSelector from './TagSelector';
 import SearchInput, { type PlaceResult } from './SearchInput';
@@ -10,6 +11,11 @@ interface RouteInfo {
   path: { lat: number; lng: number }[];
   duration: number | null;
   distance: number | null;
+}
+
+interface ProximityAlert {
+  zoneName: string;
+  distanceKm: number;
 }
 
 interface MobilePanelProps {
@@ -25,6 +31,10 @@ interface MobilePanelProps {
   canCalculate: boolean;
   altRoute: RouteInfo | null;
   onUseAltRoute: () => void;
+  proximityEnabled: boolean;
+  onToggleProximity: () => void;
+  nearbyZones: ProximityAlert[];
+  proximityError: string | null;
 }
 
 const MobilePanel = ({
@@ -40,6 +50,10 @@ const MobilePanel = ({
   canCalculate,
   altRoute,
   onUseAltRoute,
+  proximityEnabled,
+  onToggleProximity,
+  nearbyZones,
+  proximityError,
 }: MobilePanelProps) => {
   const [expanded, setExpanded] = useState(true);
 
@@ -187,6 +201,14 @@ const MobilePanel = ({
                 )}
               </div>
             )}
+
+            {/* Proximity alert */}
+            <ProximityAlertBanner
+              nearbyZones={nearbyZones}
+              enabled={proximityEnabled}
+              onToggle={onToggleProximity}
+              error={proximityError}
+            />
           </div>
         )}
       </div>

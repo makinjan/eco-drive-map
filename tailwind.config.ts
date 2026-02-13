@@ -65,6 +65,7 @@ export default {
         "tag-b": "hsl(var(--tag-b))",
         "tag-sin": "hsl(var(--tag-sin))",
         "surface-glass": "hsl(var(--surface-glass))",
+        "alert-warning": "hsl(var(--alert-warning))",
       },
       borderRadius: {
         lg: "var(--radius)",
