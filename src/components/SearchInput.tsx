@@ -1,6 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
-import { MapPin, Locate, Loader2, X } from 'lucide-react';
+import { Locate, Loader2, X, Mic, MicOff } from 'lucide-react';
+import { useVoiceInput } from '@/hooks/use-voice-input';
+import { toast } from 'sonner';
 
 export interface PlaceResult {
   coordinates: { lat: number; lng: number };
@@ -31,6 +33,32 @@ const SearchInput = ({ placeholder, onSelect, onClear, icon = 'origin', autoGeol
   const containerRef = useRef<HTMLDivElement>(null);
   const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
   const didAutoGeolocate = useRef(false);
+
+  const geocodeAndSelect = useCallback(async (address: string) => {
+    try {
+      const geocoder = new google.maps.Geocoder();
+      const res = await geocoder.geocode({ address, region: 'es' });
+      if (res.results && res.results.length > 0) {
+        const loc = res.results[0].geometry.location;
+        const name = res.results[0].formatted_address;
+        setQuery(name);
+        onSelect({ coordinates: { lat: loc.lat(), lng: loc.lng() }, name });
+        return;
+      }
+    } catch (err) {
+      console.error('Geocode error:', err);
+    }
+    toast.error('No se encontró la dirección dictada');
+  }, [onSelect]);
+
+  const voice = useVoiceInput({
+    onResult: (transcript) => {
+      setQuery(transcript);
+      toast.info(`🎤 "${transcript}"`);
+      geocodeAndSelect(transcript);
+    },
+    onError: (err) => toast.error(err),
+  });
 
   const reverseGeocode = async (lat: number, lng: number): Promise<string> => {
     try {
@@ -64,7 +92,6 @@ const SearchInput = ({ placeholder, onSelect, onClear, icon = 'origin', autoGeol
     );
   };
 
-  // Auto-geolocate on mount if enabled
   useEffect(() => {
     if (autoGeolocate && !didAutoGeolocate.current) {
       didAutoGeolocate.current = true;
@@ -161,7 +188,7 @@ const SearchInput = ({ placeholder, onSelect, onClear, icon = 'origin', autoGeol
           <Input
             value={query}
             onChange={(e) => handleChange(e.target.value)}
-            placeholder={geolocating ? 'Localizando...' : placeholder}
+            placeholder={geolocating ? 'Localizando...' : voice.isListening ? '🎤 Escuchando...' : placeholder}
             className="pl-8 pr-8 h-10 bg-muted/50 border-border/60 rounded-xl text-sm placeholder:text-muted-foreground/60 focus:bg-background focus:border-primary/40 transition-colors"
           />
           {query && (
@@ -179,6 +206,24 @@ const SearchInput = ({ placeholder, onSelect, onClear, icon = 'origin', autoGeol
             </button>
           )}
         </div>
+        {/* Mic button */}
+        <button
+          type="button"
+          onClick={voice.isListening ? voice.stopListening : voice.startListening}
+          className={cn(
+            'flex items-center justify-center w-10 h-10 rounded-xl border transition-colors shrink-0',
+            voice.isListening
+              ? 'bg-destructive/10 border-destructive/40 text-destructive animate-pulse'
+              : 'bg-muted/50 border-border/60 hover:bg-accent/60 text-primary'
+          )}
+          title={voice.isListening ? 'Detener' : 'Dictar dirección'}
+        >
+          {voice.isListening ? (
+            <MicOff className="h-4 w-4" />
+          ) : (
+            <Mic className="h-4 w-4" />
+          )}
+        </button>
         {icon === 'origin' && (
           <button
             type="button"
@@ -215,7 +260,6 @@ const SearchInput = ({ placeholder, onSelect, onClear, icon = 'origin', autoGeol
   );
 };
 
-// Helper
 function cn(...classes: (string | false | undefined)[]) {
   return classes.filter(Boolean).join(' ');
 }

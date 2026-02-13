@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route, ParkingCircle, MapPin } from 'lucide-react';
+import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route, ParkingCircle, MapPin, Mic, MicOff } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import ProximityAlertBanner from './ProximityAlertBanner';
 import { Button } from '@/components/ui/button';
@@ -49,6 +49,8 @@ interface MobilePanelProps {
   destination: { lat: number; lng: number } | null;
   onStartNavigation: () => void;
   isNavigating: boolean;
+  onVoiceCommand: () => void;
+  isVoiceListening: boolean;
 }
 
 const MobilePanel = ({
@@ -76,6 +78,8 @@ const MobilePanel = ({
   destination,
   onStartNavigation,
   isNavigating,
+  onVoiceCommand,
+  isVoiceListening,
 }: MobilePanelProps) => {
   const [expanded, setExpanded] = useState(true);
 
@@ -126,24 +130,35 @@ const MobilePanel = ({
             <SearchInput placeholder="Origen" onSelect={onOriginSelect} onClear={onOriginClear} icon="origin" autoGeolocate />
             <SearchInput placeholder="Destino" onSelect={onDestinationSelect} onClear={onDestinationClear} icon="destination" />
 
-            <Button
-              onClick={onCalculateRoute}
-              disabled={!canCalculate || routeStatus === 'loading'}
-              className="w-full font-semibold h-11 rounded-xl text-sm shadow-sm"
-              size="lg"
-            >
-              {routeStatus === 'loading' ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Calculando...
-                </>
-              ) : (
-                <>
-                  <Navigation className="mr-2 h-4 w-4" />
-                  Calcular ruta
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={onCalculateRoute}
+                disabled={!canCalculate || routeStatus === 'loading'}
+                className="flex-1 font-semibold h-11 rounded-xl text-sm shadow-sm"
+                size="lg"
+              >
+                {routeStatus === 'loading' ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Calculando...
+                  </>
+                ) : (
+                  <>
+                    <Navigation className="mr-2 h-4 w-4" />
+                    Calcular ruta
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={onVoiceCommand}
+                variant="outline"
+                size="lg"
+                className={`h-11 w-11 rounded-xl shrink-0 p-0 ${isVoiceListening ? 'border-destructive/40 bg-destructive/10 text-destructive animate-pulse' : ''}`}
+                title="Comando de voz"
+              >
+                {isVoiceListening ? <MicOff className="h-4.5 w-4.5" /> : <Mic className="h-4.5 w-4.5" />}
+              </Button>
+            </div>
 
             {/* Route result */}
             {routeStatus !== 'idle' && routeStatus !== 'loading' && (
