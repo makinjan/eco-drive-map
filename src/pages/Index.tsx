@@ -1,20 +1,24 @@
 import { useState, useCallback } from 'react';
+import { LoadScript } from '@react-google-maps/api';
 import MapView from '@/components/MapView';
 import Sidebar from '@/components/Sidebar';
 import MobilePanel from '@/components/MobilePanel';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { MAPBOX_TOKEN } from '@/lib/mapbox-config';
-import { validateRoute, type ValidationResult } from '@/lib/route-validator';
+import { GOOGLE_MAPS_API_KEY } from '@/lib/google-maps-config';
+import { validateRoute } from '@/lib/route-validator';
+import type { ValidationResult } from '@/lib/route-validator';
 import type { PlaceResult } from '@/components/SearchInput';
-import type { Feature, LineString } from 'geojson';
 import { toast } from 'sonner';
+
 type RouteStatus = 'idle' | 'loading' | 'valid' | 'invalid' | 'no-route';
+
+const LIBRARIES: ('places')[] = ['places'];
 
 const Index = () => {
   const [selectedTag, setSelectedTag] = useState('C');
   const [origin, setOrigin] = useState<PlaceResult | null>(null);
   const [destination, setDestination] = useState<PlaceResult | null>(null);
-  const [route, setRoute] = useState<Feature<LineString> | null>(null);
+  const [routePath, setRoutePath] = useState<{ lat: number; lng: number }[]>([]);
   const [routeStatus, setRouteStatus] = useState<RouteStatus>('idle');
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [routeDuration, setRouteDuration] = useState<number | null>(null);
@@ -24,36 +28,42 @@ const Index = () => {
     if (!origin || !destination) return;
 
     setRouteStatus('loading');
-    setRoute(null);
+    setRoutePath([]);
     setValidationResult(null);
 
     try {
-      const [oLng, oLat] = origin.coordinates;
-      const [dLng, dLat] = destination.coordinates;
+      const directionsService = new google.maps.DirectionsService();
+      const result = await directionsService.route({
+        origin: origin.coordinates,
+        destination: destination.coordinates,
+        travelMode: google.maps.TravelMode.DRIVING,
+      });
 
-      const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${oLng},${oLat};${dLng},${dLat}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
-      const res = await fetch(url);
-      const data = await res.json();
-
-      if (!data.routes || data.routes.length === 0) {
+      if (!result.routes || result.routes.length === 0) {
         setRouteStatus('no-route');
         toast.error('No se encontró una ruta entre los puntos seleccionados');
         return;
       }
 
-      const routeData = data.routes[0];
-      const routeFeature: Feature<LineString> = {
-        type: 'Feature',
-        properties: {},
-        geometry: routeData.geometry,
+      const route = result.routes[0];
+      const leg = route.legs![0];
+
+      // Decode path to LatLng array
+      const path = route.overview_path!.map((p) => ({
+        lat: p.lat(),
+        lng: p.lng(),
+      }));
+      setRoutePath(path);
+      setRouteDuration(leg.duration?.value ?? null);
+      setRouteDistance(leg.distance?.value ?? null);
+
+      // Convert to GeoJSON LineString for validation
+      const routeGeometry = {
+        type: 'LineString' as const,
+        coordinates: path.map((p) => [p.lng, p.lat]),
       };
 
-      setRoute(routeFeature);
-      setRouteDuration(routeData.duration);
-      setRouteDistance(routeData.distance);
-
-      // Validate against ZBE zones
-      const validation = validateRoute(routeData.geometry, selectedTag);
+      const validation = validateRoute(routeGeometry, selectedTag);
       setValidationResult(validation);
 
       if (validation.valid) {
@@ -68,7 +78,7 @@ const Index = () => {
     } catch (err) {
       console.error('Error calculating route:', err);
       setRouteStatus('no-route');
-      toast.error('Error al calcular la ruta. Verifica tu token de Mapbox.');
+      toast.error('Error al calcular la ruta.');
     }
   }, [origin, destination, selectedTag]);
 
@@ -90,15 +100,17 @@ const Index = () => {
   };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden">
-      <MapView
-        origin={origin?.coordinates ?? null}
-        destination={destination?.coordinates ?? null}
-        route={route}
-        routeStatus={routeStatus}
-      />
-      {isMobile ? <MobilePanel {...panelProps} /> : <Sidebar {...panelProps} />}
-    </div>
+    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={LIBRARIES} language="es">
+      <div className="relative w-screen h-screen overflow-hidden">
+        <MapView
+          origin={origin?.coordinates ?? null}
+          destination={destination?.coordinates ?? null}
+          routePath={routePath}
+          routeStatus={routeStatus}
+        />
+        {isMobile ? <MobilePanel {...panelProps} /> : <Sidebar {...panelProps} />}
+      </div>
+    </LoadScript>
   );
 };
 
