@@ -121,6 +121,7 @@ const Sidebar = ({
             placeholder="Origen"
             onSelect={onOriginSelect}
             icon="origin"
+            autoGeolocate
           />
           <SearchInput
             placeholder="Destino"
