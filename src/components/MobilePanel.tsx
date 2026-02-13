@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route } from 'lucide-react';
+import ThemeToggle from './ThemeToggle';
 import { Button } from '@/components/ui/button';
 import TagSelector from './TagSelector';
 import SearchInput, { type PlaceResult } from './SearchInput';
@@ -71,11 +72,14 @@ const MobilePanel = ({
 
         {/* Header */}
         <div className="px-4 pb-2">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10">
-              <Shield className="h-4 w-4 text-primary" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10">
+                <Shield className="h-4 w-4 text-primary" />
+              </div>
+              <span className="text-sm font-bold text-foreground tracking-tight">ZBE Navigator</span>
             </div>
-            <span className="text-sm font-bold text-foreground tracking-tight">ZBE Navigator</span>
+            <ThemeToggle />
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, Route, MapPin } from 'lucide-react';
+import ThemeToggle from './ThemeToggle';
 import { Button } from '@/components/ui/button';
 import TagSelector from './TagSelector';
 import SearchInput, { type PlaceResult } from './SearchInput';
@@ -56,18 +57,21 @@ const Sidebar = ({
       <div className="glass-panel rounded-2xl overflow-hidden">
         {/* Header */}
         <div className="px-5 pt-5 pb-4">
-          <div className="flex items-center gap-2.5 mb-1">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
-              <Shield className="h-4.5 w-4.5 text-primary" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+                <Shield className="h-4.5 w-4.5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-base font-bold text-foreground tracking-tight">
+                  ZBE Navigator
+                </h1>
+                <p className="text-[11px] text-muted-foreground leading-tight">
+                  Rutas legales según tu etiqueta DGT
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-base font-bold text-foreground tracking-tight">
-                ZBE Navigator
-              </h1>
-              <p className="text-[11px] text-muted-foreground leading-tight">
-                Rutas legales según tu etiqueta DGT
-              </p>
-            </div>
+            <ThemeToggle />
           </div>
         </div>
 
