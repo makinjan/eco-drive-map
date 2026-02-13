@@ -509,21 +509,39 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
         type: 'Polygon',
         coordinates: [
           [
-            [-3.6050, 37.1800],
-            [-3.6000, 37.1815],
-            [-3.5940, 37.1810],
-            [-3.5900, 37.1790],
-            [-3.5880, 37.1760],
-            [-3.5875, 37.1730],
-            [-3.5890, 37.1700],
-            [-3.5925, 37.1680],
-            [-3.5970, 37.1670],
-            [-3.6020, 37.1675],
-            [-3.6060, 37.1700],
-            [-3.6075, 37.1730],
-            [-3.6075, 37.1765],
-            [-3.6060, 37.1790],
-            [-3.6050, 37.1800],
+            // Perímetro oficial ~23.55 km² — casco urbano consolidado
+            // Excluye: GR-30, Ronda Sur (A-395), Patronato Alhambra
+            // Este: Sacromonte / Abadía
+            [-3.5820, 37.1820],
+            [-3.5780, 37.1790],
+            // Sureste: Camino Caidero, acceso Alhambra libre
+            [-3.5750, 37.1740],
+            [-3.5780, 37.1680],
+            [-3.5830, 37.1620],
+            // Sur: Av. Innovación dentro, Nuevo los Cármenes parking libre
+            [-3.5900, 37.1560],
+            [-3.6000, 37.1510],
+            [-3.6100, 37.1490],
+            // Suroeste: Río Monachil, Vegas del Genil
+            [-3.6220, 37.1500],
+            [-3.6350, 37.1530],
+            [-3.6420, 37.1570],
+            // Oeste: Parque Alquerías, Puleva, Parque F.G. Lorca
+            [-3.6480, 37.1640],
+            [-3.6500, 37.1720],
+            [-3.6490, 37.1800],
+            // Noroeste: Blas de Otero, Lepanto, Racimos, El Jau
+            [-3.6450, 37.1870],
+            [-3.6380, 37.1930],
+            // Norte: Pegaso, Merced Alta (fuera), Ciudad Deportiva (dentro)
+            [-3.6280, 37.1970],
+            [-3.6170, 37.1990],
+            [-3.6060, 37.2000],
+            // Noreste: Ctra. Alfacar, Fargue
+            [-3.5950, 37.1990],
+            [-3.5870, 37.1950],
+            [-3.5830, 37.1890],
+            [-3.5820, 37.1820],
           ],
         ],
       },
