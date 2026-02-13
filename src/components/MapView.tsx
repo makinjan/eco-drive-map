@@ -1,17 +1,17 @@
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import { GoogleMap, Polygon, Marker, Polyline, InfoWindow } from '@react-google-maps/api';
 import { SPAIN_CENTER, INITIAL_ZOOM, MAP_OPTIONS } from '@/lib/google-maps-config';
 import { zbeZones, type ZBEProperties } from '@/data/zbe-zones';
-import { useState } from 'react';
 
 interface MapViewProps {
   origin: { lat: number; lng: number } | null;
   destination: { lat: number; lng: number } | null;
   routePath: { lat: number; lng: number }[];
   routeStatus: 'idle' | 'loading' | 'valid' | 'invalid' | 'no-route';
+  altRoutePath: { lat: number; lng: number }[] | null;
 }
 
-const MapView = ({ origin, destination, routePath, routeStatus }: MapViewProps) => {
+const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath }: MapViewProps) => {
   const mapRef = useRef<google.maps.Map | null>(null);
   const [selectedZone, setSelectedZone] = useState<{
     position: google.maps.LatLngLiteral;
@@ -22,15 +22,15 @@ const MapView = ({ origin, destination, routePath, routeStatus }: MapViewProps) 
     mapRef.current = map;
   }, []);
 
-  // Fit bounds when route changes
   useEffect(() => {
     if (!mapRef.current || routePath.length === 0) return;
     const bounds = new google.maps.LatLngBounds();
     routePath.forEach((p) => bounds.extend(p));
+    if (altRoutePath) altRoutePath.forEach((p) => bounds.extend(p));
     if (origin) bounds.extend(origin);
     if (destination) bounds.extend(destination);
     mapRef.current.fitBounds(bounds, 100);
-  }, [routePath, origin, destination]);
+  }, [routePath, origin, destination, altRoutePath]);
 
   const routeColor =
     routeStatus === 'valid' ? '#22c55e' :
@@ -47,10 +47,7 @@ const MapView = ({ origin, destination, routePath, routeStatus }: MapViewProps) 
     >
       {/* ZBE Zones */}
       {zbeZones.features.map((feature) => {
-        const coords = feature.geometry.coordinates[0].map(([lng, lat]) => ({
-          lat,
-          lng,
-        }));
+        const coords = feature.geometry.coordinates[0].map(([lng, lat]) => ({ lat, lng }));
         return (
           <Polygon
             key={feature.properties.id}
@@ -75,7 +72,6 @@ const MapView = ({ origin, destination, routePath, routeStatus }: MapViewProps) 
         );
       })}
 
-      {/* ZBE InfoWindow */}
       {selectedZone && (
         <InfoWindow
           position={selectedZone.position}
@@ -97,7 +93,6 @@ const MapView = ({ origin, destination, routePath, routeStatus }: MapViewProps) 
         </InfoWindow>
       )}
 
-      {/* Origin marker */}
       {origin && (
         <Marker
           position={origin}
@@ -112,7 +107,6 @@ const MapView = ({ origin, destination, routePath, routeStatus }: MapViewProps) 
         />
       )}
 
-      {/* Destination marker */}
       {destination && (
         <Marker
           position={destination}
@@ -127,7 +121,34 @@ const MapView = ({ origin, destination, routePath, routeStatus }: MapViewProps) 
         />
       )}
 
-      {/* Route line */}
+      {/* Alternative route (shown behind main route, dashed green) */}
+      {altRoutePath && altRoutePath.length > 0 && (
+        <>
+          <Polyline
+            path={altRoutePath}
+            options={{
+              strokeColor: '#22c55e',
+              strokeOpacity: 0.25,
+              strokeWeight: 8,
+            }}
+          />
+          <Polyline
+            path={altRoutePath}
+            options={{
+              strokeColor: '#22c55e',
+              strokeOpacity: 0.7,
+              strokeWeight: 4,
+              icons: [{
+                icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 },
+                offset: '0',
+                repeat: '15px',
+              }],
+            }}
+          />
+        </>
+      )}
+
+      {/* Main route */}
       {routePath.length > 0 && (
         <>
           <Polyline
