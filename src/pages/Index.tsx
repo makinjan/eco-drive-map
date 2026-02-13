@@ -6,6 +6,7 @@ import MobilePanel from '@/components/MobilePanel';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { GOOGLE_MAPS_API_KEY } from '@/lib/google-maps-config';
 import { validateRoute } from '@/lib/route-validator';
+import { getAvoidanceWaypoints, getPointInZBE } from '@/lib/zbe-avoidance';
 import type { ValidationResult } from '@/lib/route-validator';
 import type { PlaceResult } from '@/components/SearchInput';
 import { toast } from 'sonner';
@@ -30,14 +31,22 @@ const Index = () => {
   const [routeDuration, setRouteDuration] = useState<number | null>(null);
   const [routeDistance, setRouteDistance] = useState<number | null>(null);
 
-  // Alternative route state
   const [altRoute, setAltRoute] = useState<RouteInfo | null>(null);
-  const [showAltRoute, setShowAltRoute] = useState(false);
 
   const pathToGeometry = (path: { lat: number; lng: number }[]) => ({
     type: 'LineString' as const,
     coordinates: path.map((p) => [p.lng, p.lat]),
   });
+
+  const extractRouteInfo = (route: google.maps.DirectionsRoute): RouteInfo => {
+    const path = route.overview_path!.map((p) => ({ lat: p.lat(), lng: p.lng() }));
+    const leg = route.legs![0];
+    return {
+      path,
+      duration: leg.duration?.value ?? null,
+      distance: leg.distance?.value ?? null,
+    };
+  };
 
   const calculateRoute = useCallback(async () => {
     if (!origin || !destination) return;
@@ -46,10 +55,11 @@ const Index = () => {
     setRoutePath([]);
     setValidationResult(null);
     setAltRoute(null);
-    setShowAltRoute(false);
 
     try {
       const directionsService = new google.maps.DirectionsService();
+
+      // Request with alternatives
       const result = await directionsService.route({
         origin: origin.coordinates,
         destination: destination.coordinates,
@@ -63,56 +73,102 @@ const Index = () => {
         return;
       }
 
-      // Process main route
-      const mainRoute = result.routes[0];
-      const mainLeg = mainRoute.legs![0];
-      const mainPath = mainRoute.overview_path!.map((p) => ({
-        lat: p.lat(),
-        lng: p.lng(),
-      }));
+      // Check all routes for a valid one
+      const routeInfos = result.routes.map(extractRouteInfo);
+      const validations = routeInfos.map((ri) =>
+        validateRoute(pathToGeometry(ri.path), selectedTag)
+      );
 
-      setRoutePath(mainPath);
-      setRouteDuration(mainLeg.duration?.value ?? null);
-      setRouteDistance(mainLeg.distance?.value ?? null);
+      // Find first valid route
+      const validIndex = validations.findIndex((v) => v.valid);
 
-      const mainValidation = validateRoute(pathToGeometry(mainPath), selectedTag);
-      setValidationResult(mainValidation);
-
-      if (mainValidation.valid) {
+      if (validIndex === 0) {
+        // Main route is valid
+        setRoutePath(routeInfos[0].path);
+        setRouteDuration(routeInfos[0].duration);
+        setRouteDistance(routeInfos[0].distance);
         setRouteStatus('valid');
+        setValidationResult(validations[0]);
         toast.success('✅ Ruta legal para tu etiqueta');
-      } else {
+      } else if (validIndex > 0) {
+        // Main route blocked, but an alternative is valid
+        setRoutePath(routeInfos[0].path);
+        setRouteDuration(routeInfos[0].duration);
+        setRouteDistance(routeInfos[0].distance);
         setRouteStatus('invalid');
+        setValidationResult(validations[0]);
+        setAltRoute(routeInfos[validIndex]);
+        toast.error('❌ Ruta principal bloqueada. ¡Alternativa legal disponible!');
+      } else {
+        // No Google alternative is valid
+        const blockedZoneIds = validations[0].blockedZones.map((z) => z.id);
 
-        // Search for a valid alternative among the other routes
-        let foundAlt = false;
-        for (let i = 1; i < result.routes.length; i++) {
-          const altPath = result.routes[i].overview_path!.map((p) => ({
-            lat: p.lat(),
-            lng: p.lng(),
-          }));
-          const altValidation = validateRoute(pathToGeometry(altPath), selectedTag);
+        setRoutePath(routeInfos[0].path);
+        setRouteDuration(routeInfos[0].duration);
+        setRouteDistance(routeInfos[0].distance);
+        setRouteStatus('invalid');
+        setValidationResult(validations[0]);
 
-          if (altValidation.valid) {
-            const altLeg = result.routes[i].legs![0];
-            setAltRoute({
-              path: altPath,
-              duration: altLeg.duration?.value ?? null,
-              distance: altLeg.distance?.value ?? null,
+        // Check if origin/destination is inside a blocked ZBE
+        const originInZBE = getPointInZBE(origin.coordinates, selectedTag);
+        const destInZBE = getPointInZBE(destination.coordinates, selectedTag);
+
+        // Try avoidance waypoints
+        const waypoints = getAvoidanceWaypoints(blockedZoneIds, origin.coordinates, destination.coordinates);
+
+        if (waypoints.length > 0) {
+          try {
+            const avoidResult = await directionsService.route({
+              origin: origin.coordinates,
+              destination: destination.coordinates,
+              travelMode: google.maps.TravelMode.DRIVING,
+              waypoints: waypoints.map((wp) => ({
+                location: wp,
+                stopover: false,
+              })),
             });
-            foundAlt = true;
-            toast.error(
-              `❌ Ruta principal bloqueada. ¡Alternativa legal disponible!`
-            );
-            break;
+
+            if (avoidResult.routes && avoidResult.routes.length > 0) {
+              const avoidInfo = extractRouteInfo(avoidResult.routes[0]);
+              // Always offer the avoidance route as alternative
+              setAltRoute(avoidInfo);
+
+              if (originInZBE || destInZBE) {
+                const zoneNames = [originInZBE, destInZBE].filter(Boolean).join(' y ');
+                toast.error(
+                  `❌ Tu punto de ${originInZBE ? 'origen' : 'destino'} está dentro de ${zoneNames}. Alternativa con menor exposición disponible.`
+                );
+              } else {
+                toast.error('❌ Ruta principal bloqueada. ¡Alternativa disponible!');
+              }
+              return;
+            }
+          } catch (avoidErr) {
+            console.error('Avoidance route error:', avoidErr);
           }
         }
 
-        if (!foundAlt) {
-          toast.error(
-            `❌ Ruta bloqueada: ${mainValidation.blockedZones.map((z) => z.name).join(', ')}. No se encontró alternativa válida.`
-          );
+        // Fallback: offer any Google alt route as "best effort" even if not fully valid
+        if (result.routes.length > 1) {
+          // Pick the route with fewest blocked zones
+          let bestIdx = 1;
+          let bestBlockedCount = validations[1].blockedZones.length;
+          for (let i = 2; i < result.routes.length; i++) {
+            if (validations[i].blockedZones.length < bestBlockedCount) {
+              bestIdx = i;
+              bestBlockedCount = validations[i].blockedZones.length;
+            }
+          }
+          if (bestBlockedCount < validations[0].blockedZones.length) {
+            setAltRoute(routeInfos[bestIdx]);
+            toast.error('❌ Ruta bloqueada. Alternativa con menor exposición disponible.');
+            return;
+          }
         }
+
+        toast.error(
+          `❌ Ruta bloqueada: ${validations[0].blockedZones.map((z) => z.name).join(', ')}. No se encontró alternativa válida.`
+        );
       }
     } catch (err) {
       console.error('Error calculating route:', err);
@@ -128,7 +184,6 @@ const Index = () => {
     setRouteDistance(altRoute.distance);
     setRouteStatus('valid');
     setValidationResult({ valid: true, blockedZones: [] });
-    setShowAltRoute(true);
     setAltRoute(null);
     toast.success('✅ Ruta alternativa aplicada');
   }, [altRoute]);
