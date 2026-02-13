@@ -16,21 +16,21 @@ interface TagSelectorProps {
 const TagSelector = ({ value, onChange }: TagSelectorProps) => {
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-foreground">
+      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         Tu etiqueta ambiental DGT
       </label>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {TAGS.map((tag) => (
           <button
             key={tag.value}
             onClick={() => onChange(tag.value)}
             className={cn(
-              'px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200',
-              'border-2 text-primary-foreground',
+              'px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all duration-200',
+              'text-primary-foreground',
               tag.colorClass,
               value === tag.value
-                ? 'ring-2 ring-ring ring-offset-2 ring-offset-background scale-105 shadow-md'
-                : 'opacity-60 hover:opacity-90 border-transparent'
+                ? 'ring-2 ring-ring/50 ring-offset-1 ring-offset-background scale-[1.03] shadow-md'
+                : 'opacity-50 hover:opacity-80'
             )}
           >
             {tag.label}

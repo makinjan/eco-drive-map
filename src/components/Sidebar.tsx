@@ -1,4 +1,4 @@
-import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, Route } from 'lucide-react';
+import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, Route, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import TagSelector from './TagSelector';
 import SearchInput, { type PlaceResult } from './SearchInput';
@@ -52,26 +52,35 @@ const Sidebar = ({
   };
 
   return (
-    <div className="absolute top-4 left-4 z-10 w-80 max-h-[calc(100vh-2rem)] overflow-y-auto">
-      <div className="bg-card rounded-2xl shadow-xl border border-border/50 backdrop-blur-sm">
+    <div className="absolute top-4 left-4 z-10 w-[340px] max-h-[calc(100vh-2rem)] overflow-y-auto">
+      <div className="glass-panel rounded-2xl overflow-hidden">
         {/* Header */}
-        <div className="p-4 border-b border-border/50">
-          <div className="flex items-center gap-2 mb-1">
-            <Shield className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-bold text-foreground">ZBE Navigator</h1>
+        <div className="px-5 pt-5 pb-4">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+              <Shield className="h-4.5 w-4.5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold text-foreground tracking-tight">
+                ZBE Navigator
+              </h1>
+              <p className="text-[11px] text-muted-foreground leading-tight">
+                Rutas legales según tu etiqueta DGT
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Rutas legales según tu etiqueta ambiental
-          </p>
         </div>
 
         {/* Tag selector */}
-        <div className="p-4 border-b border-border/50">
+        <div className="px-5 pb-4">
           <TagSelector value={selectedTag} onChange={onTagChange} />
         </div>
 
+        {/* Divider */}
+        <div className="mx-5 h-px bg-border/60" />
+
         {/* Search inputs */}
-        <div className="p-4 space-y-3">
+        <div className="px-5 py-4 space-y-2.5">
           <SearchInput
             placeholder="Origen"
             onSelect={onOriginSelect}
@@ -86,7 +95,7 @@ const Sidebar = ({
           <Button
             onClick={onCalculateRoute}
             disabled={!canCalculate || routeStatus === 'loading'}
-            className="w-full mt-2 font-semibold"
+            className="w-full mt-1 font-semibold h-11 rounded-xl text-sm shadow-sm"
             size="lg"
           >
             {routeStatus === 'loading' ? (
@@ -105,93 +114,102 @@ const Sidebar = ({
 
         {/* Route result */}
         {routeStatus !== 'idle' && routeStatus !== 'loading' && (
-          <div className="p-4 border-t border-border/50">
-            {routeStatus === 'valid' && (
-              <div className="rounded-xl bg-route-valid/10 p-3 space-y-2">
-                <div className="flex items-center gap-2 text-route-valid font-semibold text-sm">
-                  <CheckCircle2 className="h-5 w-5" />
-                  Ruta legal para etiqueta {selectedTag}
-                </div>
-                {routeDuration != null && routeDistance != null && (
-                  <div className="flex gap-4 text-xs text-muted-foreground">
-                    <span>🕐 {formatDuration(routeDuration)}</span>
-                    <span>📍 {formatDistance(routeDistance)}</span>
+          <>
+            <div className="mx-5 h-px bg-border/60" />
+            <div className="px-5 py-4 space-y-2.5">
+              {routeStatus === 'valid' && (
+                <div className="rounded-xl bg-route-valid/8 border border-route-valid/20 p-3.5 space-y-2">
+                  <div className="flex items-center gap-2 text-route-valid font-semibold text-sm">
+                    <CheckCircle2 className="h-4.5 w-4.5" />
+                    Ruta legal para etiqueta {selectedTag}
                   </div>
-                )}
-              </div>
-            )}
-
-            {routeStatus === 'invalid' && validationResult && (
-              <div className="rounded-xl bg-destructive/10 p-3 space-y-2">
-                <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
-                  <XCircle className="h-5 w-5" />
-                  Ruta no permitida
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Tu etiqueta <strong>{selectedTag}</strong> no puede circular por:
-                </p>
-                {validationResult.blockedZones.map((z) => (
-                  <div
-                    key={z.id}
-                    className="flex items-start gap-2 text-xs bg-destructive/5 rounded-lg p-2"
-                  >
-                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                    <div>
-                      <strong>{z.name}</strong>
-                      <br />
-                      <span className="text-muted-foreground">
-                        Permitidas: {z.allowedTags.join(', ')}
-                      </span>
+                  {routeDuration != null && routeDistance != null && (
+                    <div className="flex gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">🕐 {formatDuration(routeDuration)}</span>
+                      <span className="flex items-center gap-1">📍 {formatDistance(routeDistance)}</span>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {routeStatus === 'invalid' && altRoute && (
-              <div className="rounded-xl bg-route-valid/10 border border-route-valid/30 p-3 space-y-2">
-                <div className="flex items-center gap-2 text-route-valid font-semibold text-sm">
-                  <Route className="h-5 w-5" />
-                  Alternativa legal disponible
+                  )}
                 </div>
-                {altRoute.duration != null && altRoute.distance != null && (
-                  <div className="flex gap-4 text-xs text-muted-foreground">
-                    <span>🕐 {formatDuration(altRoute.duration)}</span>
-                    <span>📍 {formatDistance(altRoute.distance)}</span>
-                  </div>
-                )}
-                <Button
-                  onClick={onUseAltRoute}
-                  variant="outline"
-                  size="sm"
-                  className="w-full border-route-valid/50 text-route-valid hover:bg-route-valid/10"
-                >
-                  <Route className="mr-2 h-4 w-4" />
-                  Usar ruta alternativa
-                </Button>
-              </div>
-            )}
+              )}
 
-            {routeStatus === 'no-route' && (
-              <div className="rounded-xl bg-muted p-3">
-                <div className="flex items-center gap-2 text-muted-foreground font-semibold text-sm">
-                  <XCircle className="h-5 w-5" />
-                  No se encontró ruta
+              {routeStatus === 'invalid' && validationResult && (
+                <div className="rounded-xl bg-destructive/6 border border-destructive/15 p-3.5 space-y-2.5">
+                  <div className="flex items-center gap-2 text-destructive font-semibold text-sm">
+                    <XCircle className="h-4.5 w-4.5" />
+                    Ruta no permitida
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Tu etiqueta <strong className="text-foreground">{selectedTag}</strong> no puede circular por:
+                  </p>
+                  {validationResult.blockedZones.map((z) => (
+                    <div
+                      key={z.id}
+                      className="flex items-start gap-2 text-xs bg-destructive/5 rounded-lg p-2.5"
+                    >
+                      <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-foreground">{z.name}</span>
+                        <span className="block text-muted-foreground mt-0.5">
+                          Permitidas: {z.allowedTags.join(', ')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  No se pudo calcular una ruta entre los puntos seleccionados.
-                </p>
-              </div>
-            )}
-          </div>
+              )}
+
+              {routeStatus === 'invalid' && altRoute && (
+                <div className="rounded-xl bg-route-valid/8 border border-route-valid/25 p-3.5 space-y-2.5">
+                  <div className="flex items-center gap-2 text-route-valid font-semibold text-sm">
+                    <Route className="h-4.5 w-4.5" />
+                    Alternativa legal disponible
+                  </div>
+                  {altRoute.duration != null && altRoute.distance != null && (
+                    <div className="flex gap-4 text-xs text-muted-foreground">
+                      <span>🕐 {formatDuration(altRoute.duration)}</span>
+                      <span>📍 {formatDistance(altRoute.distance)}</span>
+                    </div>
+                  )}
+                  <Button
+                    onClick={onUseAltRoute}
+                    variant="outline"
+                    size="sm"
+                    className="w-full border-route-valid/40 text-route-valid hover:bg-route-valid/10 rounded-lg font-medium"
+                  >
+                    <Route className="mr-2 h-3.5 w-3.5" />
+                    Usar ruta alternativa
+                  </Button>
+                </div>
+              )}
+
+              {routeStatus === 'no-route' && (
+                <div className="rounded-xl bg-muted/60 border border-border/60 p-3.5">
+                  <div className="flex items-center gap-2 text-muted-foreground font-semibold text-sm">
+                    <XCircle className="h-4.5 w-4.5" />
+                    No se encontró ruta
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    No se pudo calcular una ruta entre los puntos seleccionados.
+                  </p>
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {/* Legend */}
-        <div className="p-4 border-t border-border/50">
-          <p className="text-xs font-medium text-muted-foreground mb-2">Leyenda</p>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="w-4 h-3 rounded-sm bg-destructive/20 border border-destructive/50" />
-            Zona de Bajas Emisiones (ZBE)
+        <div className="mx-5 h-px bg-border/60" />
+        <div className="px-5 py-3.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Leyenda</p>
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="w-3.5 h-2.5 rounded-[3px] bg-destructive/25 border border-destructive/50" />
+              ZBE
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="w-3.5 h-2.5 rounded-[3px] bg-primary/25 border border-primary/50" />
+              ZBEDEP — Especial Protección
+            </div>
           </div>
         </div>
       </div>
