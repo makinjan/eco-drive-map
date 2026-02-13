@@ -98,7 +98,6 @@ const SearchInput = ({ placeholder, onSelect, icon = 'origin' }: SearchInputProp
           name: suggestion.description,
         });
       }
-      // Reset session token after selection
       sessionTokenRef.current = null;
     } catch (err) {
       console.error('Place details error:', err);
@@ -108,28 +107,29 @@ const SearchInput = ({ placeholder, onSelect, icon = 'origin' }: SearchInputProp
   return (
     <div ref={containerRef} className="relative">
       <div className="relative">
-        <MapPin
-          className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${
-            icon === 'origin' ? 'text-route-valid' : 'text-destructive'
-          }`}
+        <div
+          className={cn(
+            'absolute left-3 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full',
+            icon === 'origin' ? 'bg-route-valid' : 'bg-destructive'
+          )}
         />
         <Input
           value={query}
           onChange={(e) => handleChange(e.target.value)}
           placeholder={placeholder}
-          className="pl-9 bg-secondary/50 border-border focus:bg-background"
+          className="pl-8 h-10 bg-muted/50 border-border/60 rounded-xl text-sm placeholder:text-muted-foreground/60 focus:bg-background focus:border-primary/40 transition-colors"
         />
       </div>
       {showResults && results.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1.5 bg-popover border border-border/60 rounded-xl shadow-lg max-h-48 overflow-y-auto">
           {results.map((r) => (
             <button
               key={r.placeId}
               onClick={() => handleSelect(r)}
-              className="w-full text-left px-3 py-2.5 text-sm hover:bg-accent transition-colors first:rounded-t-lg last:rounded-b-lg"
+              className="w-full text-left px-3 py-2.5 text-sm hover:bg-accent/60 transition-colors first:rounded-t-xl last:rounded-b-xl"
             >
-              <span className="text-foreground">{r.mainText}</span>
-              <span className="block text-xs text-muted-foreground truncate">
+              <span className="text-foreground font-medium">{r.mainText}</span>
+              <span className="block text-[11px] text-muted-foreground truncate mt-0.5">
                 {r.description}
               </span>
             </button>
@@ -139,5 +139,10 @@ const SearchInput = ({ placeholder, onSelect, icon = 'origin' }: SearchInputProp
     </div>
   );
 };
+
+// Helper
+function cn(...classes: (string | false | undefined)[]) {
+  return classes.filter(Boolean).join(' ');
+}
 
 export default SearchInput;
