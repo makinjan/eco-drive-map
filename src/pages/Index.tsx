@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react';
 import { useZBEProximity } from '@/hooks/use-zbe-proximity';
+import { useNavigation } from '@/hooks/use-navigation';
 import { LoadScript } from '@react-google-maps/api';
 import MapView from '@/components/MapView';
+import NavigationOverlay from '@/components/NavigationOverlay';
 import Sidebar from '@/components/Sidebar';
 import MobilePanel from '@/components/MobilePanel';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -211,6 +213,20 @@ const Index = () => {
   const canCalculate = !!origin && !!destination && !!selectedTag;
   const isMobile = useIsMobile();
 
+  const handleArrival = useCallback(() => {
+    toast.success('🏁 ¡Has llegado a tu destino!');
+    nav.stopNavigation();
+  }, []);
+
+  const nav = useNavigation({
+    routePath,
+    onArrival: handleArrival,
+  });
+
+  const handleStartNavigation = useCallback(() => {
+    nav.startNavigation();
+  }, [nav.startNavigation]);
+
   const panelProps = {
     selectedTag,
     onTagChange: setSelectedTag,
@@ -232,6 +248,8 @@ const Index = () => {
     proximityError,
     origin: origin?.coordinates ?? null,
     destination: destination?.coordinates ?? null,
+    onStartNavigation: handleStartNavigation,
+    isNavigating: nav.isNavigating,
   };
 
   return (
@@ -243,8 +261,23 @@ const Index = () => {
           routePath={routePath}
           routeStatus={routeStatus}
           altRoutePath={altRoute?.path ?? null}
+          isNavigating={nav.isNavigating}
+          userPosition={nav.userPosition}
+          heading={nav.heading}
         />
-        {isMobile ? <MobilePanel {...panelProps} /> : <Sidebar {...panelProps} />}
+        {nav.isNavigating && (
+          <NavigationOverlay
+            distanceRemaining={nav.distanceRemaining}
+            timeRemaining={nav.timeRemaining}
+            speed={nav.speed}
+            progressPercent={nav.progressPercent}
+            error={nav.error}
+            onStop={nav.stopNavigation}
+          />
+        )}
+        {!nav.isNavigating && (
+          isMobile ? <MobilePanel {...panelProps} /> : <Sidebar {...panelProps} />
+        )}
       </div>
     </LoadScript>
   );
