@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { MapPin } from 'lucide-react';
-import { GOOGLE_MAPS_API_KEY } from '@/lib/google-maps-config';
 
 export interface PlaceResult {
   coordinates: { lat: number; lng: number };
@@ -14,14 +13,20 @@ interface SearchInputProps {
   icon?: 'origin' | 'destination';
 }
 
+interface Suggestion {
+  placeId: string;
+  mainText: string;
+  description: string;
+  toPlace: () => google.maps.places.Place;
+}
+
 const SearchInput = ({ placeholder, onSelect, icon = 'origin' }: SearchInputProps) => {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<google.maps.places.AutocompletePrediction[]>([]);
+  const [results, setResults] = useState<Suggestion[]>([]);
   const [showResults, setShowResults] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const containerRef = useRef<HTMLDivElement>(null);
-  const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
-  const geocoder = useRef<google.maps.Geocoder | null>(null);
+  const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -33,18 +38,11 @@ const SearchInput = ({ placeholder, onSelect, icon = 'origin' }: SearchInputProp
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const getService = () => {
-    if (!autocompleteService.current) {
-      autocompleteService.current = new google.maps.places.AutocompleteService();
+  const getSessionToken = () => {
+    if (!sessionTokenRef.current) {
+      sessionTokenRef.current = new google.maps.places.AutocompleteSessionToken();
     }
-    return autocompleteService.current;
-  };
-
-  const getGeocoder = () => {
-    if (!geocoder.current) {
-      geocoder.current = new google.maps.Geocoder();
-    }
-    return geocoder.current;
+    return sessionTokenRef.current;
   };
 
   const search = async (q: string) => {
@@ -53,15 +51,30 @@ const SearchInput = ({ placeholder, onSelect, icon = 'origin' }: SearchInputProp
       return;
     }
     try {
-      const service = getService();
-      const response = await service.getPlacePredictions({
-        input: q,
-        componentRestrictions: { country: 'es' },
-        language: 'es',
-      });
-      setResults(response.predictions || []);
+      const { suggestions } =
+        await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+          input: q,
+          sessionToken: getSessionToken(),
+          includedRegionCodes: ['es'],
+          language: 'es',
+        });
+
+      const mapped: Suggestion[] = suggestions
+        .filter((s) => s.placePrediction)
+        .map((s) => {
+          const pp = s.placePrediction!;
+          return {
+            placeId: pp.placeId,
+            mainText: pp.mainText?.text ?? '',
+            description: pp.text?.text ?? '',
+            toPlace: () => pp.toPlace(),
+          };
+        });
+
+      setResults(mapped);
       setShowResults(true);
-    } catch {
+    } catch (err) {
+      console.error('Autocomplete error:', err);
       setResults([]);
     }
   };
@@ -72,21 +85,23 @@ const SearchInput = ({ placeholder, onSelect, icon = 'origin' }: SearchInputProp
     timeoutRef.current = setTimeout(() => search(value), 300);
   };
 
-  const handleSelect = async (prediction: google.maps.places.AutocompletePrediction) => {
-    setQuery(prediction.description);
+  const handleSelect = async (suggestion: Suggestion) => {
+    setQuery(suggestion.description);
     setShowResults(false);
     try {
-      const gc = getGeocoder();
-      const result = await gc.geocode({ placeId: prediction.place_id });
-      if (result.results[0]) {
-        const loc = result.results[0].geometry.location;
+      const place = suggestion.toPlace();
+      await place.fetchFields({ fields: ['location', 'displayName'] });
+      const loc = place.location;
+      if (loc) {
         onSelect({
           coordinates: { lat: loc.lat(), lng: loc.lng() },
-          name: prediction.description,
+          name: suggestion.description,
         });
       }
+      // Reset session token after selection
+      sessionTokenRef.current = null;
     } catch (err) {
-      console.error('Geocoding error:', err);
+      console.error('Place details error:', err);
     }
   };
 
@@ -109,13 +124,11 @@ const SearchInput = ({ placeholder, onSelect, icon = 'origin' }: SearchInputProp
         <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
           {results.map((r) => (
             <button
-              key={r.place_id}
+              key={r.placeId}
               onClick={() => handleSelect(r)}
               className="w-full text-left px-3 py-2.5 text-sm hover:bg-accent transition-colors first:rounded-t-lg last:rounded-b-lg"
             >
-              <span className="text-foreground">
-                {r.structured_formatting.main_text}
-              </span>
+              <span className="text-foreground">{r.mainText}</span>
               <span className="block text-xs text-muted-foreground truncate">
                 {r.description}
               </span>
