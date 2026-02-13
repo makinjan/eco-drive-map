@@ -1,26 +1,64 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as turf from '@turf/turf';
 
+export interface NavigationStep {
+  instruction: string; // HTML instructions from Google
+  plainText: string; // Plain text for speech
+  distance: number; // meters
+  duration: number; // seconds
+  startLocation: { lat: number; lng: number };
+  endLocation: { lat: number; lng: number };
+  maneuver?: string;
+}
+
 interface NavigationState {
   isNavigating: boolean;
   userPosition: { lat: number; lng: number } | null;
   heading: number | null;
-  speed: number | null; // m/s
-  distanceRemaining: number | null; // meters
-  timeRemaining: number | null; // seconds
+  speed: number | null;
+  distanceRemaining: number | null;
+  timeRemaining: number | null;
   nearestPointOnRoute: { lat: number; lng: number } | null;
   progressPercent: number;
   error: string | null;
+  currentStepIndex: number;
+  steps: NavigationStep[];
+  distanceToNextStep: number | null;
 }
 
 interface UseNavigationOptions {
   routePath: { lat: number; lng: number }[];
+  origin: { lat: number; lng: number } | null;
+  destination: { lat: number; lng: number } | null;
   onArrival?: () => void;
 }
 
 const ARRIVAL_THRESHOLD_METERS = 50;
+const STEP_ADVANCE_THRESHOLD_METERS = 30;
+const ANNOUNCE_THRESHOLD_METERS = 150;
 
-export function useNavigation({ routePath, onArrival }: UseNavigationOptions) {
+function stripHtml(html: string): string {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return div.textContent || div.innerText || '';
+}
+
+function speak(text: string) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'es-ES';
+  utterance.rate = 1.0;
+  utterance.pitch = 1.0;
+  utterance.volume = 1.0;
+  // Try to find a Spanish voice
+  const voices = window.speechSynthesis.getVoices();
+  const esVoice = voices.find((v) => v.lang.startsWith('es'));
+  if (esVoice) utterance.voice = esVoice;
+  window.speechSynthesis.speak(utterance);
+}
+
+export function useNavigation({ routePath, origin, destination, onArrival }: UseNavigationOptions) {
   const [state, setState] = useState<NavigationState>({
     isNavigating: false,
     userPosition: null,
@@ -31,11 +69,16 @@ export function useNavigation({ routePath, onArrival }: UseNavigationOptions) {
     nearestPointOnRoute: null,
     progressPercent: 0,
     error: null,
+    currentStepIndex: 0,
+    steps: [],
+    distanceToNextStep: null,
   });
 
   const watchIdRef = useRef<number | null>(null);
   const routeLineRef = useRef<ReturnType<typeof turf.lineString> | null>(null);
   const totalDistanceRef = useRef<number>(0);
+  const announcedStepsRef = useRef<Set<number>>(new Set());
+  const preAnnouncedStepsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (routePath.length >= 2) {
@@ -45,7 +88,49 @@ export function useNavigation({ routePath, onArrival }: UseNavigationOptions) {
     }
   }, [routePath]);
 
-  const startNavigation = useCallback(() => {
+  // Load voices
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+    }
+  }, []);
+
+  const fetchDirectionsSteps = useCallback(async () => {
+    if (!origin || !destination) return [];
+    try {
+      const directionsService = new google.maps.DirectionsService();
+      const result = await directionsService.route({
+        origin,
+        destination,
+        travelMode: google.maps.TravelMode.DRIVING,
+      });
+
+      if (!result.routes?.[0]?.legs?.[0]?.steps) return [];
+
+      const steps: NavigationStep[] = result.routes[0].legs[0].steps.map((step) => ({
+        instruction: step.instructions || '',
+        plainText: stripHtml(step.instructions || ''),
+        distance: step.distance?.value ?? 0,
+        duration: step.duration?.value ?? 0,
+        startLocation: {
+          lat: step.start_location.lat(),
+          lng: step.start_location.lng(),
+        },
+        endLocation: {
+          lat: step.end_location.lat(),
+          lng: step.end_location.lng(),
+        },
+        maneuver: (step as any).maneuver || undefined,
+      }));
+
+      return steps;
+    } catch (err) {
+      console.error('Failed to fetch direction steps:', err);
+      return [];
+    }
+  }, [origin, destination]);
+
+  const startNavigation = useCallback(async () => {
     if (!navigator.geolocation) {
       setState((s) => ({ ...s, error: 'Geolocalización no disponible en este dispositivo' }));
       return;
@@ -55,7 +140,28 @@ export function useNavigation({ routePath, onArrival }: UseNavigationOptions) {
       return;
     }
 
-    setState((s) => ({ ...s, isNavigating: true, error: null }));
+    // Fetch step-by-step directions
+    const steps = await fetchDirectionsSteps();
+
+    announcedStepsRef.current = new Set();
+    preAnnouncedStepsRef.current = new Set();
+
+    setState((s) => ({
+      ...s,
+      isNavigating: true,
+      error: null,
+      steps,
+      currentStepIndex: 0,
+      distanceToNextStep: null,
+    }));
+
+    // Announce start
+    if (steps.length > 0) {
+      speak(`Navegación iniciada. ${steps[0].plainText}`);
+      announcedStepsRef.current.add(0);
+    } else {
+      speak('Navegación iniciada. Sigue la ruta marcada en azul.');
+    }
 
     const id = navigator.geolocation.watchPosition(
       (position) => {
@@ -70,30 +176,72 @@ export function useNavigation({ routePath, onArrival }: UseNavigationOptions) {
         const nearestCoord = snapped.geometry.coordinates;
         const nearestPoint = { lat: nearestCoord[1], lng: nearestCoord[0] };
 
-        // Distance from snapped point to end of route
-        const snappedLocation = snapped.properties.location ?? 0; // distance along line in meters
+        const snappedLocation = snapped.properties.location ?? 0;
         const totalDist = totalDistanceRef.current;
         const distanceRemaining = Math.max(0, totalDist - snappedLocation);
         const progressPercent = totalDist > 0 ? Math.min(100, (snappedLocation / totalDist) * 100) : 0;
 
-        // Estimate time remaining based on speed
-        const currentSpeed = speed && speed > 0 ? speed : 10; // default 10 m/s (~36 km/h)
+        const currentSpeed = speed && speed > 0 ? speed : 10;
         const timeRemaining = distanceRemaining / currentSpeed;
 
-        setState((s) => ({
-          ...s,
-          userPosition: userPos,
-          heading: heading ?? s.heading,
-          speed: speed ?? null,
-          distanceRemaining,
-          timeRemaining,
-          nearestPointOnRoute: nearestPoint,
-          progressPercent,
-          error: null,
-        }));
+        setState((prev) => {
+          let newStepIndex = prev.currentStepIndex;
+          let distToNext: number | null = null;
 
-        // Check arrival
+          if (prev.steps.length > 0) {
+            // Check if we're close to the next step's start
+            for (let i = newStepIndex; i < prev.steps.length; i++) {
+              const stepEnd = prev.steps[i].endLocation;
+              const dist = turf.distance(userPt, turf.point([stepEnd.lng, stepEnd.lat]), { units: 'meters' });
+              if (dist < STEP_ADVANCE_THRESHOLD_METERS && i > newStepIndex) {
+                newStepIndex = Math.min(i + 1, prev.steps.length - 1);
+                break;
+              }
+            }
+
+            // Calculate distance to current step's end
+            if (newStepIndex < prev.steps.length) {
+              const stepEnd = prev.steps[newStepIndex].endLocation;
+              distToNext = turf.distance(userPt, turf.point([stepEnd.lng, stepEnd.lat]), { units: 'meters' });
+            }
+
+            // Pre-announce next step when approaching
+            const nextIdx = newStepIndex + 1;
+            if (
+              nextIdx < prev.steps.length &&
+              distToNext != null &&
+              distToNext < ANNOUNCE_THRESHOLD_METERS &&
+              !preAnnouncedStepsRef.current.has(nextIdx)
+            ) {
+              preAnnouncedStepsRef.current.add(nextIdx);
+              const dist = Math.round(distToNext);
+              speak(`En ${dist} metros, ${prev.steps[nextIdx].plainText}`);
+            }
+
+            // Announce current step when advancing
+            if (newStepIndex !== prev.currentStepIndex && !announcedStepsRef.current.has(newStepIndex)) {
+              announcedStepsRef.current.add(newStepIndex);
+              speak(prev.steps[newStepIndex].plainText);
+            }
+          }
+
+          return {
+            ...prev,
+            userPosition: userPos,
+            heading: heading ?? prev.heading,
+            speed: speed ?? null,
+            distanceRemaining,
+            timeRemaining,
+            nearestPointOnRoute: nearestPoint,
+            progressPercent,
+            currentStepIndex: newStepIndex,
+            distanceToNextStep: distToNext,
+            error: null,
+          };
+        });
+
         if (distanceRemaining < ARRIVAL_THRESHOLD_METERS) {
+          speak('Has llegado a tu destino.');
           onArrival?.();
         }
       },
@@ -113,12 +261,15 @@ export function useNavigation({ routePath, onArrival }: UseNavigationOptions) {
     );
 
     watchIdRef.current = id;
-  }, [routePath, onArrival]);
+  }, [routePath, fetchDirectionsSteps, onArrival]);
 
   const stopNavigation = useCallback(() => {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
     }
     setState({
       isNavigating: false,
@@ -130,14 +281,19 @@ export function useNavigation({ routePath, onArrival }: UseNavigationOptions) {
       nearestPointOnRoute: null,
       progressPercent: 0,
       error: null,
+      currentStepIndex: 0,
+      steps: [],
+      distanceToNextStep: null,
     });
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
       }
     };
   }, []);

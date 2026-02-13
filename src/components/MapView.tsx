@@ -47,6 +47,7 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
   }, [isNavigating, userPosition]);
 
   const routeColor =
+    isNavigating ? '#4285f4' :
     routeStatus === 'valid' ? '#22c55e' :
     routeStatus === 'invalid' ? '#ef4444' :
     '#4285f4';

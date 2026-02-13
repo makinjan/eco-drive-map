@@ -220,6 +220,8 @@ const Index = () => {
 
   const nav = useNavigation({
     routePath,
+    origin: origin?.coordinates ?? null,
+    destination: destination?.coordinates ?? null,
     onArrival: handleArrival,
   });
 
@@ -273,6 +275,9 @@ const Index = () => {
             progressPercent={nav.progressPercent}
             error={nav.error}
             onStop={nav.stopNavigation}
+            currentStep={nav.steps[nav.currentStepIndex] ?? null}
+            nextStep={nav.steps[nav.currentStepIndex + 1] ?? null}
+            distanceToNextStep={nav.distanceToNextStep}
           />
         )}
         {!nav.isNavigating && (
