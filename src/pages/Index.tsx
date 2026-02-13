@@ -383,6 +383,13 @@ const Index = () => {
     }
   }, [origin, destination, calculateRoute]);
 
+  // Re-validate route when tag changes and a route exists
+  useEffect(() => {
+    if (origin && destination && routePath.length > 0) {
+      calculateRoute();
+    }
+  }, [selectedTag]);
+
   const handleVoiceCommand = useCallback(() => {
     if (voiceCommand.isListening) {
       voiceCommand.stopListening();
