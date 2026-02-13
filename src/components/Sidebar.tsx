@@ -305,7 +305,7 @@ const Sidebar = ({
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="w-3.5 h-2.5 rounded-[3px] bg-primary/25 border border-primary/50" />
-              ZBEDEP — Especial Protección
+              ZBEDEP / ZBEES — Especial Protección
             </div>
           </div>
         </div>

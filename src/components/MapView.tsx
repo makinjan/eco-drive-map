@@ -134,7 +134,9 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
                 borderRadius: 4,
                 marginBottom: 6,
               }}>
-                ZBEDEP — Especial Protección
+                {selectedZone.props.name.startsWith('ZBEES')
+                  ? 'ZBEES — Especial Sensibilidad'
+                  : 'ZBEDEP — Especial Protección'}
               </span>
             )}
             <h3 style={{ fontWeight: 700, fontSize: 14, margin: '0 0 8px' }}>
