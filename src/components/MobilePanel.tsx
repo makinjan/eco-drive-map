@@ -1,9 +1,15 @@
 import { useState } from 'react';
-import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown } from 'lucide-react';
+import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import TagSelector from './TagSelector';
 import SearchInput, { type PlaceResult } from './SearchInput';
 import type { ValidationResult } from '@/lib/route-validator';
+
+interface RouteInfo {
+  path: { lat: number; lng: number }[];
+  duration: number | null;
+  distance: number | null;
+}
 
 interface MobilePanelProps {
   selectedTag: string;
@@ -16,6 +22,8 @@ interface MobilePanelProps {
   routeDuration: number | null;
   routeDistance: number | null;
   canCalculate: boolean;
+  altRoute: RouteInfo | null;
+  onUseAltRoute: () => void;
 }
 
 const MobilePanel = ({
@@ -29,6 +37,8 @@ const MobilePanel = ({
   routeDuration,
   routeDistance,
   canCalculate,
+  altRoute,
+  onUseAltRoute,
 }: MobilePanelProps) => {
   const [expanded, setExpanded] = useState(true);
 
@@ -135,6 +145,30 @@ const MobilePanel = ({
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {routeStatus === 'invalid' && altRoute && (
+                  <div className="rounded-xl bg-route-valid/10 border border-route-valid/30 p-3 space-y-2">
+                    <div className="flex items-center gap-2 text-route-valid font-semibold text-sm">
+                      <Route className="h-5 w-5" />
+                      Alternativa legal disponible
+                    </div>
+                    {altRoute.duration != null && altRoute.distance != null && (
+                      <div className="flex gap-4 text-xs text-muted-foreground">
+                        <span>🕐 {formatDuration(altRoute.duration)}</span>
+                        <span>📍 {formatDistance(altRoute.distance)}</span>
+                      </div>
+                    )}
+                    <Button
+                      onClick={onUseAltRoute}
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-route-valid/50 text-route-valid hover:bg-route-valid/10"
+                    >
+                      <Route className="mr-2 h-4 w-4" />
+                      Usar ruta alternativa
+                    </Button>
                   </div>
                 )}
 

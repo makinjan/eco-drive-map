@@ -14,6 +14,12 @@ type RouteStatus = 'idle' | 'loading' | 'valid' | 'invalid' | 'no-route';
 
 const LIBRARIES: ('places')[] = ['places'];
 
+interface RouteInfo {
+  path: { lat: number; lng: number }[];
+  duration: number | null;
+  distance: number | null;
+}
+
 const Index = () => {
   const [selectedTag, setSelectedTag] = useState('C');
   const [origin, setOrigin] = useState<PlaceResult | null>(null);
@@ -24,12 +30,23 @@ const Index = () => {
   const [routeDuration, setRouteDuration] = useState<number | null>(null);
   const [routeDistance, setRouteDistance] = useState<number | null>(null);
 
+  // Alternative route state
+  const [altRoute, setAltRoute] = useState<RouteInfo | null>(null);
+  const [showAltRoute, setShowAltRoute] = useState(false);
+
+  const pathToGeometry = (path: { lat: number; lng: number }[]) => ({
+    type: 'LineString' as const,
+    coordinates: path.map((p) => [p.lng, p.lat]),
+  });
+
   const calculateRoute = useCallback(async () => {
     if (!origin || !destination) return;
 
     setRouteStatus('loading');
     setRoutePath([]);
     setValidationResult(null);
+    setAltRoute(null);
+    setShowAltRoute(false);
 
     try {
       const directionsService = new google.maps.DirectionsService();
@@ -37,6 +54,7 @@ const Index = () => {
         origin: origin.coordinates,
         destination: destination.coordinates,
         travelMode: google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: true,
       });
 
       if (!result.routes || result.routes.length === 0) {
@@ -45,35 +63,56 @@ const Index = () => {
         return;
       }
 
-      const route = result.routes[0];
-      const leg = route.legs![0];
-
-      // Decode path to LatLng array
-      const path = route.overview_path!.map((p) => ({
+      // Process main route
+      const mainRoute = result.routes[0];
+      const mainLeg = mainRoute.legs![0];
+      const mainPath = mainRoute.overview_path!.map((p) => ({
         lat: p.lat(),
         lng: p.lng(),
       }));
-      setRoutePath(path);
-      setRouteDuration(leg.duration?.value ?? null);
-      setRouteDistance(leg.distance?.value ?? null);
 
-      // Convert to GeoJSON LineString for validation
-      const routeGeometry = {
-        type: 'LineString' as const,
-        coordinates: path.map((p) => [p.lng, p.lat]),
-      };
+      setRoutePath(mainPath);
+      setRouteDuration(mainLeg.duration?.value ?? null);
+      setRouteDistance(mainLeg.distance?.value ?? null);
 
-      const validation = validateRoute(routeGeometry, selectedTag);
-      setValidationResult(validation);
+      const mainValidation = validateRoute(pathToGeometry(mainPath), selectedTag);
+      setValidationResult(mainValidation);
 
-      if (validation.valid) {
+      if (mainValidation.valid) {
         setRouteStatus('valid');
         toast.success('✅ Ruta legal para tu etiqueta');
       } else {
         setRouteStatus('invalid');
-        toast.error(
-          `❌ Ruta bloqueada: ${validation.blockedZones.map((z) => z.name).join(', ')}`
-        );
+
+        // Search for a valid alternative among the other routes
+        let foundAlt = false;
+        for (let i = 1; i < result.routes.length; i++) {
+          const altPath = result.routes[i].overview_path!.map((p) => ({
+            lat: p.lat(),
+            lng: p.lng(),
+          }));
+          const altValidation = validateRoute(pathToGeometry(altPath), selectedTag);
+
+          if (altValidation.valid) {
+            const altLeg = result.routes[i].legs![0];
+            setAltRoute({
+              path: altPath,
+              duration: altLeg.duration?.value ?? null,
+              distance: altLeg.distance?.value ?? null,
+            });
+            foundAlt = true;
+            toast.error(
+              `❌ Ruta principal bloqueada. ¡Alternativa legal disponible!`
+            );
+            break;
+          }
+        }
+
+        if (!foundAlt) {
+          toast.error(
+            `❌ Ruta bloqueada: ${mainValidation.blockedZones.map((z) => z.name).join(', ')}. No se encontró alternativa válida.`
+          );
+        }
       }
     } catch (err) {
       console.error('Error calculating route:', err);
@@ -82,8 +121,19 @@ const Index = () => {
     }
   }, [origin, destination, selectedTag]);
 
-  const canCalculate = !!origin && !!destination && !!selectedTag;
+  const handleUseAltRoute = useCallback(() => {
+    if (!altRoute) return;
+    setRoutePath(altRoute.path);
+    setRouteDuration(altRoute.duration);
+    setRouteDistance(altRoute.distance);
+    setRouteStatus('valid');
+    setValidationResult({ valid: true, blockedZones: [] });
+    setShowAltRoute(true);
+    setAltRoute(null);
+    toast.success('✅ Ruta alternativa aplicada');
+  }, [altRoute]);
 
+  const canCalculate = !!origin && !!destination && !!selectedTag;
   const isMobile = useIsMobile();
 
   const panelProps = {
@@ -97,6 +147,8 @@ const Index = () => {
     routeDuration,
     routeDistance,
     canCalculate,
+    altRoute,
+    onUseAltRoute: handleUseAltRoute,
   };
 
   return (
@@ -107,6 +159,7 @@ const Index = () => {
           destination={destination?.coordinates ?? null}
           routePath={routePath}
           routeStatus={routeStatus}
+          altRoutePath={altRoute?.path ?? null}
         />
         {isMobile ? <MobilePanel {...panelProps} /> : <Sidebar {...panelProps} />}
       </div>
