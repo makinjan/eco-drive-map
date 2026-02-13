@@ -202,5 +202,35 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
         ],
       },
     },
+    {
+      type: 'Feature',
+      properties: {
+        id: 'ZBEDEP_MADRID_CENTRO',
+        name: 'ZBEDEP Distrito Centro (Madrid)',
+        allowed_tags: ['CERO', 'ECO'],
+        valid_from: '2024-01-01',
+        valid_to: '2030-12-31',
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [-3.7138, 40.4260],
+            [-3.7070, 40.4270],
+            [-3.7000, 40.4255],
+            [-3.6945, 40.4230],
+            [-3.6920, 40.4195],
+            [-3.6925, 40.4160],
+            [-3.6955, 40.4135],
+            [-3.7010, 40.4115],
+            [-3.7085, 40.4120],
+            [-3.7140, 40.4145],
+            [-3.7165, 40.4190],
+            [-3.7160, 40.4230],
+            [-3.7138, 40.4260],
+          ],
+        ],
+      },
+    },
   ],
 };
