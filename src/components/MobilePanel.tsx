@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route } from 'lucide-react';
+import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route, ParkingCircle, MapPin } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import ProximityAlertBanner from './ProximityAlertBanner';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,12 @@ interface ProximityAlert {
   distanceKm: number;
 }
 
+interface SafePoint {
+  coordinates: { lat: number; lng: number };
+  zoneName: string;
+  distanceMeters: number;
+}
+
 interface MobilePanelProps {
   selectedTag: string;
   onTagChange: (tag: string) => void;
@@ -31,6 +37,8 @@ interface MobilePanelProps {
   canCalculate: boolean;
   altRoute: RouteInfo | null;
   onUseAltRoute: () => void;
+  safeOrigin: SafePoint | null;
+  safeDest: SafePoint | null;
   proximityEnabled: boolean;
   onToggleProximity: () => void;
   nearbyZones: ProximityAlert[];
@@ -50,6 +58,8 @@ const MobilePanel = ({
   canCalculate,
   altRoute,
   onUseAltRoute,
+  safeOrigin,
+  safeDest,
   proximityEnabled,
   onToggleProximity,
   nearbyZones,
@@ -188,6 +198,41 @@ const MobilePanel = ({
                       <Route className="mr-2 h-3.5 w-3.5" />
                       Usar ruta alternativa
                     </Button>
+                  </div>
+                )}
+
+                {/* Safe point suggestions */}
+                {routeStatus === 'invalid' && (safeOrigin || safeDest) && (
+                  <div className="space-y-2">
+                    {[
+                      { point: safeOrigin, label: 'origen', type: 'origin' as const },
+                      { point: safeDest, label: 'destino', type: 'destination' as const },
+                    ]
+                      .filter((s) => s.point)
+                      .map(({ point, label, type }) => (
+                        <div
+                          key={type}
+                          className="rounded-xl bg-alert-warning/8 border border-alert-warning/20 p-3.5 space-y-2"
+                        >
+                          <div className="flex items-center gap-2 text-alert-warning font-semibold text-xs">
+                            <ParkingCircle className="h-4 w-4" />
+                            Punto seguro cerca de tu {label}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            A <strong className="text-foreground">{point!.distanceMeters} m</strong> fuera de{' '}
+                            <strong className="text-foreground">{point!.zoneName}</strong>
+                          </p>
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${point!.coordinates.lat},${point!.coordinates.lng}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-1.5 text-xs font-medium text-alert-warning hover:underline"
+                          >
+                            <MapPin className="h-3 w-3" />
+                            Ver en Google Maps
+                          </a>
+                        </div>
+                      ))}
                   </div>
                 )}
 

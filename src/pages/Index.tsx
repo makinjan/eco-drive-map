@@ -7,7 +7,7 @@ import MobilePanel from '@/components/MobilePanel';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { GOOGLE_MAPS_API_KEY } from '@/lib/google-maps-config';
 import { validateRoute } from '@/lib/route-validator';
-import { getAvoidanceWaypoints, getPointInZBE } from '@/lib/zbe-avoidance';
+import { getAvoidanceWaypoints, getPointInZBE, getNearestPointOutsideZBE, type SafePoint } from '@/lib/zbe-avoidance';
 import type { ValidationResult } from '@/lib/route-validator';
 import type { PlaceResult } from '@/components/SearchInput';
 import { toast } from 'sonner';
@@ -33,6 +33,8 @@ const Index = () => {
   const [routeDistance, setRouteDistance] = useState<number | null>(null);
 
   const [altRoute, setAltRoute] = useState<RouteInfo | null>(null);
+  const [safeOrigin, setSafeOrigin] = useState<SafePoint | null>(null);
+  const [safeDest, setSafeDest] = useState<SafePoint | null>(null);
 
   const [proximityEnabled, setProximityEnabled] = useState(false);
   const { nearbyZones, error: proximityError } = useZBEProximity({
@@ -62,6 +64,8 @@ const Index = () => {
     setRoutePath([]);
     setValidationResult(null);
     setAltRoute(null);
+    setSafeOrigin(null);
+    setSafeDest(null);
 
     try {
       const directionsService = new google.maps.DirectionsService();
@@ -116,9 +120,16 @@ const Index = () => {
         setRouteStatus('invalid');
         setValidationResult(validations[0]);
 
-        // Check if origin/destination is inside a blocked ZBE
+        // Check if origin/destination is inside a blocked ZBE and suggest safe points
         const originInZBE = getPointInZBE(origin.coordinates, selectedTag);
         const destInZBE = getPointInZBE(destination.coordinates, selectedTag);
+
+        if (originInZBE) {
+          setSafeOrigin(getNearestPointOutsideZBE(origin.coordinates, selectedTag));
+        }
+        if (destInZBE) {
+          setSafeDest(getNearestPointOutsideZBE(destination.coordinates, selectedTag));
+        }
 
         // Try avoidance waypoints
         const waypoints = getAvoidanceWaypoints(blockedZoneIds, origin.coordinates, destination.coordinates);
@@ -211,6 +222,8 @@ const Index = () => {
     canCalculate,
     altRoute,
     onUseAltRoute: handleUseAltRoute,
+    safeOrigin,
+    safeDest,
     proximityEnabled,
     onToggleProximity: () => setProximityEnabled((p) => !p),
     nearbyZones,
