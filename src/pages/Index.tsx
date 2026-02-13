@@ -124,46 +124,48 @@ const Index = () => {
         const originInZBE = getPointInZBE(origin.coordinates, selectedTag);
         const destInZBE = getPointInZBE(destination.coordinates, selectedTag);
 
-        if (originInZBE) {
-          setSafeOrigin(getNearestPointOutsideZBE(origin.coordinates, selectedTag));
-        }
-        if (destInZBE) {
-          setSafeDest(getNearestPointOutsideZBE(destination.coordinates, selectedTag));
-        }
+        const safeOriginPoint = originInZBE ? getNearestPointOutsideZBE(origin.coordinates, selectedTag) : null;
+        const safeDestPoint = destInZBE ? getNearestPointOutsideZBE(destination.coordinates, selectedTag) : null;
+
+        if (safeOriginPoint) setSafeOrigin(safeOriginPoint);
+        if (safeDestPoint) setSafeDest(safeDestPoint);
+
+        // Use safe points as actual origin/destination for the avoidance route
+        const altOrigin = safeOriginPoint ? safeOriginPoint.coordinates : origin.coordinates;
+        const altDest = safeDestPoint ? safeDestPoint.coordinates : destination.coordinates;
 
         // Try avoidance waypoints
-        const waypoints = getAvoidanceWaypoints(blockedZoneIds, origin.coordinates, destination.coordinates);
+        const waypoints = getAvoidanceWaypoints(blockedZoneIds, altOrigin, altDest);
 
-        if (waypoints.length > 0) {
-          try {
-            const avoidResult = await directionsService.route({
-              origin: origin.coordinates,
-              destination: destination.coordinates,
-              travelMode: google.maps.TravelMode.DRIVING,
-              waypoints: waypoints.map((wp) => ({
-                location: wp,
-                stopover: false,
-              })),
-            });
+        try {
+          const avoidResult = await directionsService.route({
+            origin: altOrigin,
+            destination: altDest,
+            travelMode: google.maps.TravelMode.DRIVING,
+            waypoints: waypoints.length > 0 ? waypoints.map((wp) => ({
+              location: wp,
+              stopover: false,
+            })) : undefined,
+          });
 
-            if (avoidResult.routes && avoidResult.routes.length > 0) {
-              const avoidInfo = extractRouteInfo(avoidResult.routes[0]);
-              // Always offer the avoidance route as alternative
-              setAltRoute(avoidInfo);
+          if (avoidResult.routes && avoidResult.routes.length > 0) {
+            const avoidInfo = extractRouteInfo(avoidResult.routes[0]);
+            setAltRoute(avoidInfo);
 
-              if (originInZBE || destInZBE) {
-                const zoneNames = [originInZBE, destInZBE].filter(Boolean).join(' y ');
-                toast.error(
-                  `❌ Tu punto de ${originInZBE ? 'origen' : 'destino'} está dentro de ${zoneNames}. Alternativa con menor exposición disponible.`
-                );
-              } else {
-                toast.error('❌ Ruta principal bloqueada. ¡Alternativa disponible!');
-              }
-              return;
+            if (originInZBE || destInZBE) {
+              const parts: string[] = [];
+              if (originInZBE) parts.push(`origen está dentro de ${originInZBE}`);
+              if (destInZBE) parts.push(`destino está dentro de ${destInZBE}`);
+              toast.error(
+                `❌ Tu ${parts.join(' y tu ')}. Ruta alternativa hasta punto seguro disponible.`
+              );
+            } else {
+              toast.error('❌ Ruta principal bloqueada. ¡Alternativa disponible!');
             }
-          } catch (avoidErr) {
-            console.error('Avoidance route error:', avoidErr);
+            return;
           }
+        } catch (avoidErr) {
+          console.error('Avoidance route error:', avoidErr);
         }
 
         // Fallback: offer any Google alt route as "best effort" even if not fully valid
