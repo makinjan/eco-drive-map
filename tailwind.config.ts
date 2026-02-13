@@ -57,6 +57,13 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        "route-valid": "hsl(var(--route-valid))",
+        "route-invalid": "hsl(var(--route-invalid))",
+        "tag-cero": "hsl(var(--tag-cero))",
+        "tag-eco": "hsl(var(--tag-eco))",
+        "tag-c": "hsl(var(--tag-c))",
+        "tag-b": "hsl(var(--tag-b))",
+        "tag-sin": "hsl(var(--tag-sin))",
       },
       borderRadius: {
         lg: "var(--radius)",
