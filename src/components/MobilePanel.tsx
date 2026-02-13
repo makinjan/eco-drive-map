@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route, ParkingCircle, MapPin, ExternalLink } from 'lucide-react';
+import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route, ParkingCircle, MapPin } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import ProximityAlertBanner from './ProximityAlertBanner';
 import { Button } from '@/components/ui/button';
@@ -45,6 +45,8 @@ interface MobilePanelProps {
   proximityError: string | null;
   origin: { lat: number; lng: number } | null;
   destination: { lat: number; lng: number } | null;
+  onStartNavigation: () => void;
+  isNavigating: boolean;
 }
 
 const MobilePanel = ({
@@ -68,6 +70,8 @@ const MobilePanel = ({
   proximityError,
   origin,
   destination,
+  onStartNavigation,
+  isNavigating,
 }: MobilePanelProps) => {
   const [expanded, setExpanded] = useState(true);
 
@@ -152,22 +156,15 @@ const MobilePanel = ({
                         <span>📍 {formatDistance(routeDistance)}</span>
                       </div>
                     )}
-                    {origin && destination && (
-                      <a
-                        href={`https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&travelmode=driving`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className="w-full rounded-lg font-semibold mt-1"
-                        >
-                          <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                          Iniciar ruta
-                        </Button>
-                      </a>
-                    )}
+                    <Button
+                      onClick={onStartNavigation}
+                      variant="default"
+                      size="sm"
+                      className="w-full rounded-lg font-semibold mt-1"
+                    >
+                      <Navigation className="mr-2 h-3.5 w-3.5" />
+                      Iniciar ruta
+                    </Button>
                   </div>
                 )}
 

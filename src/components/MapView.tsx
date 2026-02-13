@@ -9,9 +9,12 @@ interface MapViewProps {
   routePath: { lat: number; lng: number }[];
   routeStatus: 'idle' | 'loading' | 'valid' | 'invalid' | 'no-route';
   altRoutePath: { lat: number; lng: number }[] | null;
+  isNavigating?: boolean;
+  userPosition?: { lat: number; lng: number } | null;
+  heading?: number | null;
 }
 
-const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath }: MapViewProps) => {
+const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, isNavigating, userPosition, heading }: MapViewProps) => {
   const mapRef = useRef<google.maps.Map | null>(null);
   const [selectedZone, setSelectedZone] = useState<{
     position: google.maps.LatLngLiteral;
@@ -22,15 +25,26 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath }: 
     mapRef.current = map;
   }, []);
 
+  // Fit bounds to route
   useEffect(() => {
     if (!mapRef.current || routePath.length === 0) return;
+    if (isNavigating) return; // Don't fit bounds during navigation
     const bounds = new google.maps.LatLngBounds();
     routePath.forEach((p) => bounds.extend(p));
     if (altRoutePath) altRoutePath.forEach((p) => bounds.extend(p));
     if (origin) bounds.extend(origin);
     if (destination) bounds.extend(destination);
     mapRef.current.fitBounds(bounds, 100);
-  }, [routePath, origin, destination, altRoutePath]);
+  }, [routePath, origin, destination, altRoutePath, isNavigating]);
+
+  // Center on user during navigation
+  useEffect(() => {
+    if (!mapRef.current || !isNavigating || !userPosition) return;
+    mapRef.current.panTo(userPosition);
+    if (mapRef.current.getZoom()! < 15) {
+      mapRef.current.setZoom(16);
+    }
+  }, [isNavigating, userPosition]);
 
   const routeColor =
     routeStatus === 'valid' ? '#22c55e' :
@@ -191,6 +205,22 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath }: 
             }}
           />
         </>
+      )}
+      {/* User position marker during navigation */}
+      {isNavigating && userPosition && (
+        <Marker
+          position={userPosition}
+          icon={{
+            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+            scale: 6,
+            fillColor: '#4285f4',
+            fillOpacity: 1,
+            strokeColor: '#fff',
+            strokeWeight: 2,
+            rotation: heading ?? 0,
+          }}
+          zIndex={999}
+        />
       )}
     </GoogleMap>
   );

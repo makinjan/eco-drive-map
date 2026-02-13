@@ -1,4 +1,4 @@
-import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, Route, MapPin, ParkingCircle, ExternalLink } from 'lucide-react';
+import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, Route, MapPin, ParkingCircle } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import ProximityAlertBanner from './ProximityAlertBanner';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,8 @@ interface SidebarProps {
   proximityError: string | null;
   origin: { lat: number; lng: number } | null;
   destination: { lat: number; lng: number } | null;
+  onStartNavigation: () => void;
+  isNavigating: boolean;
 }
 
 const Sidebar = ({
@@ -67,6 +69,8 @@ const Sidebar = ({
   proximityError,
   origin,
   destination,
+  onStartNavigation,
+  isNavigating,
 }: SidebarProps) => {
   const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -161,22 +165,15 @@ const Sidebar = ({
                       <span className="flex items-center gap-1">📍 {formatDistance(routeDistance)}</span>
                     </div>
                   )}
-                  {origin && destination && (
-                    <a
-                      href={`https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&travelmode=driving`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="w-full rounded-lg font-semibold mt-1"
-                      >
-                        <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                        Iniciar ruta
-                      </Button>
-                    </a>
-                  )}
+                  <Button
+                    onClick={onStartNavigation}
+                    variant="default"
+                    size="sm"
+                    className="w-full rounded-lg font-semibold mt-1"
+                  >
+                    <Navigation className="mr-2 h-3.5 w-3.5" />
+                    Iniciar ruta
+                  </Button>
                 </div>
               )}
 
