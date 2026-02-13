@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useZBEProximity } from '@/hooks/use-zbe-proximity';
 import { LoadScript } from '@react-google-maps/api';
 import MapView from '@/components/MapView';
 import Sidebar from '@/components/Sidebar';
@@ -32,6 +33,12 @@ const Index = () => {
   const [routeDistance, setRouteDistance] = useState<number | null>(null);
 
   const [altRoute, setAltRoute] = useState<RouteInfo | null>(null);
+
+  const [proximityEnabled, setProximityEnabled] = useState(false);
+  const { nearbyZones, error: proximityError } = useZBEProximity({
+    userTag: selectedTag,
+    enabled: proximityEnabled,
+  });
 
   const pathToGeometry = (path: { lat: number; lng: number }[]) => ({
     type: 'LineString' as const,
@@ -204,6 +211,10 @@ const Index = () => {
     canCalculate,
     altRoute,
     onUseAltRoute: handleUseAltRoute,
+    proximityEnabled,
+    onToggleProximity: () => setProximityEnabled((p) => !p),
+    nearbyZones,
+    proximityError,
   };
 
   return (

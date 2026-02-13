@@ -1,5 +1,6 @@
 import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, Route, MapPin } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import ProximityAlertBanner from './ProximityAlertBanner';
 import { Button } from '@/components/ui/button';
 import TagSelector from './TagSelector';
 import SearchInput, { type PlaceResult } from './SearchInput';
@@ -9,6 +10,11 @@ interface RouteInfo {
   path: { lat: number; lng: number }[];
   duration: number | null;
   distance: number | null;
+}
+
+interface ProximityAlert {
+  zoneName: string;
+  distanceKm: number;
 }
 
 interface SidebarProps {
@@ -24,6 +30,10 @@ interface SidebarProps {
   canCalculate: boolean;
   altRoute: RouteInfo | null;
   onUseAltRoute: () => void;
+  proximityEnabled: boolean;
+  onToggleProximity: () => void;
+  nearbyZones: ProximityAlert[];
+  proximityError: string | null;
 }
 
 const Sidebar = ({
@@ -39,6 +49,10 @@ const Sidebar = ({
   canCalculate,
   altRoute,
   onUseAltRoute,
+  proximityEnabled,
+  onToggleProximity,
+  nearbyZones,
+  proximityError,
 }: SidebarProps) => {
   const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -200,6 +214,16 @@ const Sidebar = ({
             </div>
           </>
         )}
+
+        {/* Proximity alert */}
+        <div className="px-5 pb-3">
+          <ProximityAlertBanner
+            nearbyZones={nearbyZones}
+            enabled={proximityEnabled}
+            onToggle={onToggleProximity}
+            error={proximityError}
+          />
+        </div>
 
         {/* Legend */}
         <div className="mx-5 h-px bg-border/60" />
