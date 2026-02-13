@@ -74,8 +74,9 @@ export function getNearestPointOutsideZBE(
 }
 
 /**
- * For each blocked ZBE zone, compute waypoints that force the route
- * to go around the zone polygon.
+ * For each blocked ZBE zone, compute a waypoint just outside the zone
+ * on the side closest to the straight line between origin and destination.
+ * Uses a tight 300m margin to keep routes optimal.
  */
 export function getAvoidanceWaypoints(
   blockedZoneIds: string[],
@@ -83,32 +84,29 @@ export function getAvoidanceWaypoints(
   destination: { lat: number; lng: number }
 ): google.maps.LatLngLiteral[] {
   const waypoints: google.maps.LatLngLiteral[] = [];
+  const originPt = turf.point([origin.lng, origin.lat]);
+  const destPt = turf.point([destination.lng, destination.lat]);
+  const midpoint = turf.midpoint(originPt, destPt);
 
   for (const feature of zbeZones.features) {
     if (!blockedZoneIds.includes(feature.properties.id)) continue;
 
-    const bbox = turf.bbox(turf.polygon(feature.geometry.coordinates));
-    const centerLat = (bbox[1] + bbox[3]) / 2;
-    const lngSpan = bbox[2] - bbox[0];
-    const latSpan = bbox[3] - bbox[1];
-    const margin = Math.max(lngSpan, latSpan) * 0.8 + 0.02;
+    const polygon = turf.polygon(feature.geometry.coordinates);
+    const boundary = turf.polygonToLine(polygon);
 
-    const midLng = (bbox[0] + bbox[2]) / 2;
-    const originEast = origin.lng > midLng;
-    const destEast = destination.lng > midLng;
+    // Find the nearest point on the polygon boundary to the route midpoint
+    const nearest = turf.nearestPointOnLine(boundary as any, midpoint);
+    const nearestCoord = nearest.geometry.coordinates;
 
-    if (originEast && destEast) {
-      waypoints.push({ lat: centerLat, lng: bbox[2] + margin });
-    } else if (!originEast && !destEast) {
-      waypoints.push({ lat: centerLat, lng: bbox[0] - margin });
-    } else {
-      const avgLat = (origin.lat + destination.lat) / 2;
-      if (avgLat > centerLat) {
-        waypoints.push({ lat: bbox[3] + margin, lng: midLng });
-      } else {
-        waypoints.push({ lat: bbox[1] - margin, lng: midLng });
-      }
-    }
+    // Push 300m outward from the polygon centroid
+    const centroid = turf.centroid(polygon);
+    const bearing = turf.bearing(centroid, turf.point(nearestCoord));
+    const safeWp = turf.destination(turf.point(nearestCoord), 0.3, bearing, { units: 'kilometers' });
+
+    waypoints.push({
+      lat: safeWp.geometry.coordinates[1],
+      lng: safeWp.geometry.coordinates[0],
+    });
   }
 
   return waypoints;
