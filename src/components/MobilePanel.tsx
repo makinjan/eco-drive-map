@@ -51,6 +51,8 @@ interface MobilePanelProps {
   isNavigating: boolean;
   onVoiceCommand: () => void;
   isVoiceListening: boolean;
+  originName?: string;
+  destName?: string;
 }
 
 const MobilePanel = ({
@@ -80,6 +82,8 @@ const MobilePanel = ({
   isNavigating,
   onVoiceCommand,
   isVoiceListening,
+  originName,
+  destName,
 }: MobilePanelProps) => {
   const [expanded, setExpanded] = useState(true);
 
@@ -127,8 +131,8 @@ const MobilePanel = ({
           <div className="px-4 pb-5 space-y-3 max-h-[60vh] overflow-y-auto">
             <TagSelector value={selectedTag} onChange={onTagChange} />
 
-            <SearchInput placeholder="Origen" onSelect={onOriginSelect} onClear={onOriginClear} icon="origin" autoGeolocate />
-            <SearchInput placeholder="Destino" onSelect={onDestinationSelect} onClear={onDestinationClear} icon="destination" />
+            <SearchInput placeholder="Origen" onSelect={onOriginSelect} onClear={onOriginClear} icon="origin" autoGeolocate externalValue={originName} />
+            <SearchInput placeholder="Destino" onSelect={onDestinationSelect} onClear={onDestinationClear} icon="destination" externalValue={destName} />
 
             <div className="flex gap-2">
               <Button

@@ -13,6 +13,7 @@ interface SearchInputProps {
   onClear?: () => void;
   icon?: 'origin' | 'destination';
   autoGeolocate?: boolean;
+  externalValue?: string;
 }
 
 interface Suggestion {
@@ -22,7 +23,7 @@ interface Suggestion {
   toPlace: () => google.maps.places.Place;
 }
 
-const SearchInput = ({ placeholder, onSelect, onClear, icon = 'origin', autoGeolocate = false }: SearchInputProps) => {
+const SearchInput = ({ placeholder, onSelect, onClear, icon = 'origin', autoGeolocate = false, externalValue }: SearchInputProps) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Suggestion[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -70,6 +71,12 @@ const SearchInput = ({ placeholder, onSelect, onClear, icon = 'origin', autoGeol
       geolocate();
     }
   }, [autoGeolocate]);
+
+  useEffect(() => {
+    if (externalValue !== undefined) {
+      setQuery(externalValue);
+    }
+  }, [externalValue]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
