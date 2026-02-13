@@ -28,7 +28,9 @@ interface MobilePanelProps {
   selectedTag: string;
   onTagChange: (tag: string) => void;
   onOriginSelect: (place: PlaceResult) => void;
+  onOriginClear?: () => void;
   onDestinationSelect: (place: PlaceResult) => void;
+  onDestinationClear?: () => void;
   onCalculateRoute: () => void;
   routeStatus: 'idle' | 'loading' | 'valid' | 'invalid' | 'no-route';
   validationResult: ValidationResult | null;
@@ -53,7 +55,9 @@ const MobilePanel = ({
   selectedTag,
   onTagChange,
   onOriginSelect,
+  onOriginClear,
   onDestinationSelect,
+  onDestinationClear,
   onCalculateRoute,
   routeStatus,
   validationResult,
@@ -119,8 +123,8 @@ const MobilePanel = ({
           <div className="px-4 pb-5 space-y-3 max-h-[60vh] overflow-y-auto">
             <TagSelector value={selectedTag} onChange={onTagChange} />
 
-            <SearchInput placeholder="Origen" onSelect={onOriginSelect} icon="origin" autoGeolocate />
-            <SearchInput placeholder="Destino" onSelect={onDestinationSelect} icon="destination" />
+            <SearchInput placeholder="Origen" onSelect={onOriginSelect} onClear={onOriginClear} icon="origin" autoGeolocate />
+            <SearchInput placeholder="Destino" onSelect={onDestinationSelect} onClear={onDestinationClear} icon="destination" />
 
             <Button
               onClick={onCalculateRoute}

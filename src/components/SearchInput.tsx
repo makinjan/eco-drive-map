@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
-import { MapPin, Locate, Loader2 } from 'lucide-react';
+import { MapPin, Locate, Loader2, X } from 'lucide-react';
 
 export interface PlaceResult {
   coordinates: { lat: number; lng: number };
@@ -10,6 +10,7 @@ export interface PlaceResult {
 interface SearchInputProps {
   placeholder: string;
   onSelect: (place: PlaceResult) => void;
+  onClear?: () => void;
   icon?: 'origin' | 'destination';
   autoGeolocate?: boolean;
 }
@@ -21,7 +22,7 @@ interface Suggestion {
   toPlace: () => google.maps.places.Place;
 }
 
-const SearchInput = ({ placeholder, onSelect, icon = 'origin', autoGeolocate = false }: SearchInputProps) => {
+const SearchInput = ({ placeholder, onSelect, onClear, icon = 'origin', autoGeolocate = false }: SearchInputProps) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Suggestion[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -161,8 +162,22 @@ const SearchInput = ({ placeholder, onSelect, icon = 'origin', autoGeolocate = f
             value={query}
             onChange={(e) => handleChange(e.target.value)}
             placeholder={geolocating ? 'Localizando...' : placeholder}
-            className="pl-8 h-10 bg-muted/50 border-border/60 rounded-xl text-sm placeholder:text-muted-foreground/60 focus:bg-background focus:border-primary/40 transition-colors"
+            className="pl-8 pr-8 h-10 bg-muted/50 border-border/60 rounded-xl text-sm placeholder:text-muted-foreground/60 focus:bg-background focus:border-primary/40 transition-colors"
           />
+          {query && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery('');
+                setResults([]);
+                setShowResults(false);
+                onClear?.();
+              }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
         {icon === 'origin' && (
           <button

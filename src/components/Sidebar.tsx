@@ -27,7 +27,9 @@ interface SidebarProps {
   selectedTag: string;
   onTagChange: (tag: string) => void;
   onOriginSelect: (place: PlaceResult) => void;
+  onOriginClear?: () => void;
   onDestinationSelect: (place: PlaceResult) => void;
+  onDestinationClear?: () => void;
   onCalculateRoute: () => void;
   routeStatus: 'idle' | 'loading' | 'valid' | 'invalid' | 'no-route';
   validationResult: ValidationResult | null;
@@ -52,7 +54,9 @@ const Sidebar = ({
   selectedTag,
   onTagChange,
   onOriginSelect,
+  onOriginClear,
   onDestinationSelect,
+  onDestinationClear,
   onCalculateRoute,
   routeStatus,
   validationResult,
@@ -120,12 +124,14 @@ const Sidebar = ({
           <SearchInput
             placeholder="Origen"
             onSelect={onOriginSelect}
+            onClear={onOriginClear}
             icon="origin"
             autoGeolocate
           />
           <SearchInput
             placeholder="Destino"
             onSelect={onDestinationSelect}
+            onClear={onDestinationClear}
             icon="destination"
           />
 
