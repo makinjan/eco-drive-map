@@ -337,32 +337,32 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
         type: 'Polygon',
         coordinates: [
           [
-            // Zona central delimitada por Paseo Marítimo Antonio
-            // Machado y Av. de Andalucía — 437 ha
-            // Norte: Av. de Carlos Haya / Cruz de Humilladero
-            [-4.4450, 36.7220],
-            [-4.4380, 36.7240],
-            [-4.4300, 36.7250],
-            [-4.4220, 36.7240],
-            [-4.4150, 36.7230],
-            // Noreste: Av. Juan Sebastián Elcano
-            [-4.4080, 36.7200],
-            [-4.4020, 36.7170],
-            // Este: La Malagueta / Puerto
-            [-4.4000, 36.7130],
-            [-4.4010, 36.7090],
-            [-4.4030, 36.7060],
+            // Zona central delimitada por Av. de Andalucía,
+            // Paseo Marítimo y río Guadalmedina — 437 ha (~4.37 km²)
+            // Norte: Cruz de Humilladero / Capuchinos
+            [-4.4380, 36.7190],
+            [-4.4320, 36.7200],
+            [-4.4250, 36.7210],
+            [-4.4180, 36.7200],
+            // Noreste: La Victoria
+            [-4.4130, 36.7180],
+            [-4.4100, 36.7150],
+            // Este: La Malagueta
+            [-4.4090, 36.7120],
+            [-4.4100, 36.7090],
+            // Sureste: Puerto
+            [-4.4120, 36.7065],
+            [-4.4160, 36.7050],
+            [-4.4220, 36.7040],
+            [-4.4300, 36.7045],
             // Sur: Paseo Marítimo
-            [-4.4080, 36.7040],
-            [-4.4150, 36.7020],
-            [-4.4250, 36.7010],
-            [-4.4350, 36.7020],
-            // Suroeste: Av. de Andalucía
-            [-4.4420, 36.7050],
-            [-4.4470, 36.7090],
-            [-4.4490, 36.7130],
-            [-4.4480, 36.7170],
-            [-4.4450, 36.7220],
+            [-4.4360, 36.7060],
+            [-4.4400, 36.7085],
+            // Oeste: Guadalmedina
+            [-4.4420, 36.7110],
+            [-4.4420, 36.7150],
+            [-4.4400, 36.7175],
+            [-4.4380, 36.7190],
           ],
         ],
       },
