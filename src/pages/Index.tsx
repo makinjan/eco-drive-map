@@ -28,7 +28,14 @@ interface RouteInfo {
 }
 
 const Index = () => {
-  const [selectedTag, setSelectedTag] = useState('C');
+  const [selectedTag, setSelectedTag] = useState(() => {
+    return localStorage.getItem('zbe-user-tag') || 'C';
+  });
+
+  const handleTagChange = useCallback((tag: string) => {
+    setSelectedTag(tag);
+    localStorage.setItem('zbe-user-tag', tag);
+  }, []);
   const [origin, setOrigin] = useState<PlaceResult | null>(null);
   const [destination, setDestination] = useState<PlaceResult | null>(null);
   const [routePath, setRoutePath] = useState<{ lat: number; lng: number }[]>([]);
@@ -387,7 +394,7 @@ const Index = () => {
 
   const panelProps = {
     selectedTag,
-    onTagChange: setSelectedTag,
+    onTagChange: handleTagChange,
     onOriginSelect: setOrigin,
     onOriginClear: handleOriginClear,
     onDestinationSelect: setDestination,
