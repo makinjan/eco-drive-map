@@ -1,12 +1,13 @@
 import { useState, useCallback } from 'react';
 import MapView from '@/components/MapView';
 import Sidebar from '@/components/Sidebar';
+import MobilePanel from '@/components/MobilePanel';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { MAPBOX_TOKEN } from '@/lib/mapbox-config';
 import { validateRoute, type ValidationResult } from '@/lib/route-validator';
 import type { PlaceResult } from '@/components/SearchInput';
 import type { Feature, LineString } from 'geojson';
 import { toast } from 'sonner';
-
 type RouteStatus = 'idle' | 'loading' | 'valid' | 'invalid' | 'no-route';
 
 const Index = () => {
@@ -73,6 +74,21 @@ const Index = () => {
 
   const canCalculate = !!origin && !!destination && !!selectedTag;
 
+  const isMobile = useIsMobile();
+
+  const panelProps = {
+    selectedTag,
+    onTagChange: setSelectedTag,
+    onOriginSelect: setOrigin,
+    onDestinationSelect: setDestination,
+    onCalculateRoute: calculateRoute,
+    routeStatus,
+    validationResult,
+    routeDuration,
+    routeDistance,
+    canCalculate,
+  };
+
   return (
     <div className="relative w-screen h-screen overflow-hidden">
       <MapView
@@ -81,18 +97,7 @@ const Index = () => {
         route={route}
         routeStatus={routeStatus}
       />
-      <Sidebar
-        selectedTag={selectedTag}
-        onTagChange={setSelectedTag}
-        onOriginSelect={setOrigin}
-        onDestinationSelect={setDestination}
-        onCalculateRoute={calculateRoute}
-        routeStatus={routeStatus}
-        validationResult={validationResult}
-        routeDuration={routeDuration}
-        routeDistance={routeDistance}
-        canCalculate={canCalculate}
-      />
+      {isMobile ? <MobilePanel {...panelProps} /> : <Sidebar {...panelProps} />}
     </div>
   );
 };
