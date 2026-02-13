@@ -46,20 +46,7 @@ function stripHtml(html: string): string {
   return div.textContent || div.innerText || '';
 }
 
-function speak(text: string) {
-  if (!('speechSynthesis' in window)) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'es-ES';
-  utterance.rate = 1.0;
-  utterance.pitch = 1.0;
-  utterance.volume = 1.0;
-  // Try to find a Spanish voice
-  const voices = window.speechSynthesis.getVoices();
-  const esVoice = voices.find((v) => v.lang.startsWith('es'));
-  if (esVoice) utterance.voice = esVoice;
-  window.speechSynthesis.speak(utterance);
-}
+import { speak } from '@/lib/speak';
 
 export function useNavigation({ routePath, origin, destination, onArrival, pois = [] }: UseNavigationOptions) {
   const [state, setState] = useState<NavigationState>({
