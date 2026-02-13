@@ -419,6 +419,8 @@ const Index = () => {
     isNavigating: nav.isNavigating,
     onVoiceCommand: handleVoiceCommand,
     isVoiceListening: voiceCommand.isListening,
+    originName: origin?.name,
+    destName: destination?.name,
   };
 
   return (

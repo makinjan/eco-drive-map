@@ -50,6 +50,8 @@ interface SidebarProps {
   isNavigating: boolean;
   onVoiceCommand: () => void;
   isVoiceListening: boolean;
+  originName?: string;
+  destName?: string;
 }
 
 const Sidebar = ({
@@ -79,6 +81,8 @@ const Sidebar = ({
   isNavigating,
   onVoiceCommand,
   isVoiceListening,
+  originName,
+  destName,
 }: SidebarProps) => {
   const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -131,12 +135,14 @@ const Sidebar = ({
             onClear={onOriginClear}
             icon="origin"
             autoGeolocate
+            externalValue={originName}
           />
           <SearchInput
             placeholder="Destino"
             onSelect={onDestinationSelect}
             onClear={onDestinationClear}
             icon="destination"
+            externalValue={destName}
           />
 
           <div className="flex gap-2">
