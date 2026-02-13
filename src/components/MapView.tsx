@@ -48,17 +48,26 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath }: 
       {/* ZBE Zones */}
       {zbeZones.features.map((feature) => {
         const coords = feature.geometry.coordinates[0].map(([lng, lat]) => ({ lat, lng }));
+        const isZBEDEP = feature.properties.id.startsWith('ZBEDEP');
         return (
           <Polygon
             key={feature.properties.id}
             paths={coords}
             options={{
-              fillColor: '#ef4444',
-              fillOpacity: 0.15,
-              strokeColor: '#dc2626',
-              strokeWeight: 2,
-              strokeOpacity: 0.8,
+              fillColor: isZBEDEP ? '#7c3aed' : '#ef4444',
+              fillOpacity: isZBEDEP ? 0.25 : 0.15,
+              strokeColor: isZBEDEP ? '#6d28d9' : '#dc2626',
+              strokeWeight: isZBEDEP ? 3 : 2,
+              strokeOpacity: 0.85,
               clickable: true,
+              ...(isZBEDEP && {
+                strokeWeight: 3,
+                icons: [{
+                  icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 2 },
+                  offset: '0',
+                  repeat: '10px',
+                }] as any,
+              }),
             }}
             onClick={(e) => {
               if (e.latLng) {
@@ -78,6 +87,20 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath }: 
           onCloseClick={() => setSelectedZone(null)}
         >
           <div style={{ padding: '8px 4px', fontFamily: 'inherit' }}>
+            {selectedZone.props.id.startsWith('ZBEDEP') && (
+              <span style={{
+                display: 'inline-block',
+                background: '#7c3aed',
+                color: '#fff',
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '2px 6px',
+                borderRadius: 4,
+                marginBottom: 6,
+              }}>
+                ZBEDEP — Especial Protección
+              </span>
+            )}
             <h3 style={{ fontWeight: 700, fontSize: 14, margin: '0 0 8px' }}>
               {selectedZone.props.name}
             </h3>
