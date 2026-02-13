@@ -502,7 +502,7 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
         id: 'ZBE_GRANADA',
         name: 'ZBE Granada',
         allowed_tags: ['CERO', 'ECO', 'C', 'B'],
-        valid_from: '2024-01-01',
+        valid_from: '2025-04-01',
         valid_to: '2030-12-31',
       },
       geometry: {
