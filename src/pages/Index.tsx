@@ -230,6 +230,8 @@ const Index = () => {
     onToggleProximity: () => setProximityEnabled((p) => !p),
     nearbyZones,
     proximityError,
+    origin: origin?.coordinates ?? null,
+    destination: destination?.coordinates ?? null,
   };
 
   return (
