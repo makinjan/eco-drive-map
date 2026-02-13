@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as turf from '@turf/turf';
+import type { RoutePOI } from '@/components/MapView';
 
 export interface NavigationStep {
   instruction: string; // HTML instructions from Google
@@ -31,11 +32,13 @@ interface UseNavigationOptions {
   origin: { lat: number; lng: number } | null;
   destination: { lat: number; lng: number } | null;
   onArrival?: () => void;
+  pois?: RoutePOI[];
 }
 
 const ARRIVAL_THRESHOLD_METERS = 50;
 const STEP_ADVANCE_THRESHOLD_METERS = 30;
 const ANNOUNCE_THRESHOLD_METERS = 150;
+const POI_ANNOUNCE_DISTANCE_METERS = 500;
 
 function stripHtml(html: string): string {
   const div = document.createElement('div');
@@ -58,7 +61,7 @@ function speak(text: string) {
   window.speechSynthesis.speak(utterance);
 }
 
-export function useNavigation({ routePath, origin, destination, onArrival }: UseNavigationOptions) {
+export function useNavigation({ routePath, origin, destination, onArrival, pois = [] }: UseNavigationOptions) {
   const [state, setState] = useState<NavigationState>({
     isNavigating: false,
     userPosition: null,
@@ -79,7 +82,7 @@ export function useNavigation({ routePath, origin, destination, onArrival }: Use
   const totalDistanceRef = useRef<number>(0);
   const announcedStepsRef = useRef<Set<number>>(new Set());
   const preAnnouncedStepsRef = useRef<Set<number>>(new Set());
-
+  const announcedPOIsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (routePath.length >= 2) {
       const line = turf.lineString(routePath.map((p) => [p.lng, p.lat]));
@@ -145,6 +148,7 @@ export function useNavigation({ routePath, origin, destination, onArrival }: Use
 
     announcedStepsRef.current = new Set();
     preAnnouncedStepsRef.current = new Set();
+    announcedPOIsRef.current = new Set();
 
     setState((s) => ({
       ...s,
@@ -239,6 +243,17 @@ export function useNavigation({ routePath, origin, destination, onArrival }: Use
             error: null,
           };
         });
+
+        // Announce nearby POIs
+        for (const poi of pois) {
+          if (announcedPOIsRef.current.has(poi.id)) continue;
+          const dist = turf.distance(userPt, turf.point([poi.position.lng, poi.position.lat]), { units: 'meters' });
+          if (dist < POI_ANNOUNCE_DISTANCE_METERS) {
+            announcedPOIsRef.current.add(poi.id);
+            const label = poi.type === 'gas_station' ? 'gasolinera' : 'área de servicio';
+            speak(`${label} cercana: ${poi.name}, a ${Math.round(dist)} metros`);
+          }
+        }
 
         if (distanceRemaining < ARRIVAL_THRESHOLD_METERS) {
           speak('Has llegado a tu destino.');

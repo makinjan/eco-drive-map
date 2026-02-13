@@ -3,6 +3,13 @@ import { GoogleMap, Polygon, Marker, Polyline, InfoWindow } from '@react-google-
 import { SPAIN_CENTER, INITIAL_ZOOM, MAP_OPTIONS } from '@/lib/google-maps-config';
 import { zbeZones, type ZBEProperties } from '@/data/zbe-zones';
 
+export interface RoutePOI {
+  id: string;
+  name: string;
+  position: { lat: number; lng: number };
+  type: 'gas_station' | 'rest_stop';
+}
+
 interface MapViewProps {
   origin: { lat: number; lng: number } | null;
   destination: { lat: number; lng: number } | null;
@@ -12,9 +19,10 @@ interface MapViewProps {
   isNavigating?: boolean;
   userPosition?: { lat: number; lng: number } | null;
   heading?: number | null;
+  pois?: RoutePOI[];
 }
 
-const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, isNavigating, userPosition, heading }: MapViewProps) => {
+const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, isNavigating, userPosition, heading, pois = [] }: MapViewProps) => {
   const mapRef = useRef<google.maps.Map | null>(null);
   const [selectedZone, setSelectedZone] = useState<{
     position: google.maps.LatLngLiteral;
@@ -37,12 +45,25 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
     mapRef.current.fitBounds(bounds, 100);
   }, [routePath, origin, destination, altRoutePath, isNavigating]);
 
+  // Zoom in when navigation starts
+  const prevNavigating = useRef(false);
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (isNavigating && !prevNavigating.current) {
+      // Just started navigating — zoom in
+      mapRef.current.setZoom(17);
+      if (userPosition) mapRef.current.panTo(userPosition);
+      else if (origin) mapRef.current.panTo(origin);
+    }
+    prevNavigating.current = !!isNavigating;
+  }, [isNavigating]);
+
   // Center on user during navigation
   useEffect(() => {
     if (!mapRef.current || !isNavigating || !userPosition) return;
     mapRef.current.panTo(userPosition);
-    if (mapRef.current.getZoom()! < 15) {
-      mapRef.current.setZoom(16);
+    if (mapRef.current.getZoom()! < 16) {
+      mapRef.current.setZoom(17);
     }
   }, [isNavigating, userPosition]);
 
@@ -223,6 +244,23 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
           zIndex={999}
         />
       )}
+
+      {/* POIs: gas stations & service areas */}
+      {pois.map((poi) => (
+        <Marker
+          key={poi.id}
+          position={poi.position}
+          icon={{
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 6,
+            fillColor: poi.type === 'gas_station' ? '#f59e0b' : '#06b6d4',
+            fillOpacity: 0.9,
+            strokeColor: '#fff',
+            strokeWeight: 2,
+          }}
+          title={poi.name}
+        />
+      ))}
     </GoogleMap>
   );
 };
