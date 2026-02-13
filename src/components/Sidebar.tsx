@@ -1,4 +1,4 @@
-import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, Route, MapPin, ParkingCircle } from 'lucide-react';
+import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, Route, MapPin, ParkingCircle, Mic, MicOff } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import ProximityAlertBanner from './ProximityAlertBanner';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,8 @@ interface SidebarProps {
   destination: { lat: number; lng: number } | null;
   onStartNavigation: () => void;
   isNavigating: boolean;
+  onVoiceCommand: () => void;
+  isVoiceListening: boolean;
 }
 
 const Sidebar = ({
@@ -75,6 +77,8 @@ const Sidebar = ({
   destination,
   onStartNavigation,
   isNavigating,
+  onVoiceCommand,
+  isVoiceListening,
 }: SidebarProps) => {
   const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -135,24 +139,35 @@ const Sidebar = ({
             icon="destination"
           />
 
-          <Button
-            onClick={onCalculateRoute}
-            disabled={!canCalculate || routeStatus === 'loading'}
-            className="w-full mt-1 font-semibold h-11 rounded-xl text-sm shadow-sm"
-            size="lg"
-          >
-            {routeStatus === 'loading' ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Calculando...
-              </>
-            ) : (
-              <>
-                <Navigation className="mr-2 h-4 w-4" />
-                Calcular ruta
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={onCalculateRoute}
+              disabled={!canCalculate || routeStatus === 'loading'}
+              className="flex-1 font-semibold h-11 rounded-xl text-sm shadow-sm"
+              size="lg"
+            >
+              {routeStatus === 'loading' ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Calculando...
+                </>
+              ) : (
+                <>
+                  <Navigation className="mr-2 h-4 w-4" />
+                  Calcular ruta
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={onVoiceCommand}
+              variant="outline"
+              size="lg"
+              className={`h-11 w-11 rounded-xl shrink-0 p-0 ${isVoiceListening ? 'border-destructive/40 bg-destructive/10 text-destructive animate-pulse' : ''}`}
+              title="Comando de voz: di tu destino"
+            >
+              {isVoiceListening ? <MicOff className="h-4.5 w-4.5" /> : <Mic className="h-4.5 w-4.5" />}
+            </Button>
+          </div>
         </div>
 
         {/* Route result */}

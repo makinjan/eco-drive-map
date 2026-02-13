@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useZBEProximity } from '@/hooks/use-zbe-proximity';
 import { useNavigation } from '@/hooks/use-navigation';
+import { useVoiceInput, parseVoiceCommand } from '@/hooks/use-voice-input';
 import { LoadScript } from '@react-google-maps/api';
 import MapView from '@/components/MapView';
 import type { RoutePOI } from '@/components/MapView';
@@ -322,6 +323,68 @@ const Index = () => {
   const handleOriginClear = useCallback(() => setOrigin(null), []);
   const handleDestClear = useCallback(() => setDestination(null), []);
 
+  // Voice command: geocode spoken address and set origin/destination
+  const geocodeAddress = useCallback(async (address: string): Promise<PlaceResult | null> => {
+    try {
+      const geocoder = new google.maps.Geocoder();
+      const res = await geocoder.geocode({ address, region: 'es' });
+      if (res.results && res.results.length > 0) {
+        const loc = res.results[0].geometry.location;
+        return { coordinates: { lat: loc.lat(), lng: loc.lng() }, name: res.results[0].formatted_address };
+      }
+    } catch (err) {
+      console.error('Geocode error:', err);
+    }
+    return null;
+  }, []);
+
+  const pendingVoiceCalc = useRef(false);
+
+  const voiceCommand = useVoiceInput({
+    onResult: async (transcript) => {
+      toast.info(`🎤 "${transcript}"`);
+      const parsed = parseVoiceCommand(transcript);
+      if (!parsed) {
+        toast.error('No se entendió el comando. Prueba: "quiero ir a [dirección]"');
+        return;
+      }
+
+      if (parsed.origin) {
+        const originPlace = await geocodeAddress(parsed.origin);
+        if (originPlace) setOrigin(originPlace);
+        else toast.error(`No se encontró: "${parsed.origin}"`);
+      }
+
+      if (parsed.destination) {
+        const destPlace = await geocodeAddress(parsed.destination);
+        if (destPlace) {
+          setDestination(destPlace);
+          pendingVoiceCalc.current = true;
+        } else {
+          toast.error(`No se encontró: "${parsed.destination}"`);
+        }
+      }
+    },
+    onError: (err) => toast.error(err),
+  });
+
+  // Auto-calculate when voice command sets destination
+  useEffect(() => {
+    if (pendingVoiceCalc.current && origin && destination) {
+      pendingVoiceCalc.current = false;
+      calculateRoute();
+    }
+  }, [origin, destination, calculateRoute]);
+
+  const handleVoiceCommand = useCallback(() => {
+    if (voiceCommand.isListening) {
+      voiceCommand.stopListening();
+    } else {
+      voiceCommand.startListening();
+      toast.info('🎤 Escuchando... Di algo como "quiero ir a la calle Lima 13 en Granada"');
+    }
+  }, [voiceCommand]);
+
   const panelProps = {
     selectedTag,
     onTagChange: setSelectedTag,
@@ -347,6 +410,8 @@ const Index = () => {
     destination: destination?.coordinates ?? null,
     onStartNavigation: handleStartNavigation,
     isNavigating: nav.isNavigating,
+    onVoiceCommand: handleVoiceCommand,
+    isVoiceListening: voiceCommand.isListening,
   };
 
   return (
