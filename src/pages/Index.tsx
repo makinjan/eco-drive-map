@@ -174,15 +174,7 @@ const Index = () => {
         setRouteStatus('valid');
         setValidationResult(validations[0]);
         toast.success('✅ Ruta legal para tu etiqueta');
-        // Voice: announce origin and destination
-        const distKm = routeInfos[0].distance ? (routeInfos[0].distance / 1000).toFixed(1) : null;
-        const durMin = routeInfos[0].duration ? Math.round(routeInfos[0].duration / 60) : null;
-        const originName = origin.name || 'origen';
-        const destName = destination.name || 'destino';
-        let msg = `Ruta calculada desde ${originName} hasta ${destName}.`;
-        if (distKm && durMin) msg += ` ${distKm} kilómetros, ${durMin} minutos aproximadamente.`;
-        msg += ' Ruta libre de restricciones para tu etiqueta.';
-        speak(msg);
+        speak('Ruta libre de restricciones para tu etiqueta.');
         searchPOIsAlongRoute(routeInfos[0].path);
       } else if (validIndex > 0) {
         // Main route blocked, but an alternative is valid
@@ -195,7 +187,7 @@ const Index = () => {
         toast.error('❌ Ruta principal bloqueada. ¡Alternativa legal disponible!');
         // Voice: warn about blocked zones
         const zoneNames = validations[0].blockedZones.map((z) => z.name).join(', ');
-        speak(`Atención. La ruta principal atraviesa zonas de bajas emisiones restringidas para tu etiqueta: ${zoneNames}. No es recomendable circular con tu vehículo por estas zonas. Se ha encontrado una ruta alternativa legal.`);
+        speak(`Zona restringida para tu etiqueta: ${zoneNames}. Alternativa legal disponible.`);
       } else {
         // No Google alternative is valid
         const blockedZoneIds = validations[0].blockedZones.map((z) => z.id);
@@ -252,11 +244,11 @@ const Index = () => {
               toast.error(
                 `❌ Tu ${parts.join(' y tu ')}. Ruta alternativa hasta punto seguro disponible.`
               );
-              speak(`${voiceParts.join('. ')}. Esta zona no es recomendable para vehículos con tu etiqueta. Se ha calculado una ruta alternativa hasta un punto seguro.`);
+              speak('Zona restringida para tu etiqueta. Ruta alternativa hasta punto seguro disponible.');
             } else {
               toast.error('❌ Ruta principal bloqueada. ¡Alternativa disponible!');
               const zoneNames = validations[0].blockedZones.map((z) => z.name).join(', ');
-              speak(`Atención. Tu ruta atraviesa zonas restringidas: ${zoneNames}. No es recomendable para tu vehículo. Alternativa disponible.`);
+              speak(`Zona restringida para tu etiqueta: ${zoneNames}. Alternativa disponible.`);
             }
             return;
           }
@@ -286,7 +278,7 @@ const Index = () => {
         toast.error(
           `❌ Ruta bloqueada: ${allZoneNames}. No se encontró alternativa válida.`
         );
-        speak(`Atención. Todas las rutas atraviesan zonas de bajas emisiones restringidas para tu etiqueta: ${allZoneNames}. No es recomendable circular con tu vehículo por estas zonas. No se ha encontrado una alternativa válida.`);
+        speak(`Zona restringida para tu etiqueta: ${allZoneNames}. No se encontró alternativa válida.`);
       }
     } catch (err) {
       console.error('Error calculating route:', err);
