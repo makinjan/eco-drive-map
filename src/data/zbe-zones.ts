@@ -279,6 +279,38 @@ export const zbeZones: FeatureCollection<Polygon, ZBEProperties> = {
         ],
       },
     },
+    {
+      type: 'Feature',
+      properties: {
+        id: 'ZBEDEP_VALENCIA_CIUTAT_VELLA',
+        name: 'ZBEES Ciutat Vella (Valencia)',
+        allowed_tags: ['CERO', 'ECO'],
+        valid_from: '2025-01-01',
+        valid_to: '2030-12-31',
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            // Ciutat Vella: ~0.3 km²
+            // Delimitada por C/ Colón, C/ Xàtiva, C/ Guillem de Castro,
+            // C/ Blanquerías y antiguo cauce del Turia
+            [-0.3810, 39.4790],  // Noroeste: Torres de Serranos
+            [-0.3780, 39.4795],  // Norte: Turia / Pont de Fusta
+            [-0.3750, 39.4790],  // Noreste: Pont de la Trinitat
+            [-0.3730, 39.4775],  // Este: C/ de la Pau
+            [-0.3725, 39.4755],  // Sureste: Pza. de la Reina
+            [-0.3735, 39.4735],  // Sur: C/ Colón / C/ Xàtiva
+            [-0.3755, 39.4725],  // Suroeste: Estació del Nord
+            [-0.3780, 39.4725],  // Sur: Pza. de Sant Agustí
+            [-0.3800, 39.4735],  // Oeste: C/ Guillem de Castro
+            [-0.3815, 39.4755],  // Oeste: Torres de Quart
+            [-0.3815, 39.4775],  // Noroeste: C/ Blanquerías
+            [-0.3810, 39.4790],
+          ],
+        ],
+      },
+    },
 
     // ==========================================
     // SEVILLA — Solo Isla de la Cartuja
