@@ -49,10 +49,9 @@ const Index = () => {
   const [safeDest, setSafeDest] = useState<SafePoint | null>(null);
   const [routePOIs, setRoutePOIs] = useState<RoutePOI[]>([]);
 
-  const [proximityEnabled, setProximityEnabled] = useState(false);
   const { nearbyZones, error: proximityError } = useZBEProximity({
     userTag: selectedTag,
-    enabled: proximityEnabled,
+    enabled: true,
   });
 
   const pathToGeometry = (path: { lat: number; lng: number }[]) => ({
@@ -419,8 +418,6 @@ const Index = () => {
     onUseAltRoute: handleUseAltRoute,
     safeOrigin,
     safeDest,
-    proximityEnabled,
-    onToggleProximity: () => setProximityEnabled((p) => !p),
     nearbyZones,
     proximityError,
     origin: origin?.coordinates ?? null,

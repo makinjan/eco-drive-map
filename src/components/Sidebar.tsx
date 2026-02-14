@@ -40,8 +40,6 @@ interface SidebarProps {
   onUseAltRoute: () => void;
   safeOrigin: SafePoint | null;
   safeDest: SafePoint | null;
-  proximityEnabled: boolean;
-  onToggleProximity: () => void;
   nearbyZones: ProximityAlert[];
   proximityError: string | null;
   origin: { lat: number; lng: number } | null;
@@ -71,8 +69,6 @@ const Sidebar = ({
   onUseAltRoute,
   safeOrigin,
   safeDest,
-  proximityEnabled,
-  onToggleProximity,
   nearbyZones,
   proximityError,
   origin,
@@ -309,8 +305,6 @@ const Sidebar = ({
         <div className="px-5 pb-3">
           <ProximityAlertBanner
             nearbyZones={nearbyZones}
-            enabled={proximityEnabled}
-            onToggle={onToggleProximity}
             error={proximityError}
           />
         </div>

@@ -41,8 +41,6 @@ interface MobilePanelProps {
   onUseAltRoute: () => void;
   safeOrigin: SafePoint | null;
   safeDest: SafePoint | null;
-  proximityEnabled: boolean;
-  onToggleProximity: () => void;
   nearbyZones: ProximityAlert[];
   proximityError: string | null;
   origin: { lat: number; lng: number } | null;
@@ -72,8 +70,6 @@ const MobilePanel = ({
   onUseAltRoute,
   safeOrigin,
   safeDest,
-  proximityEnabled,
-  onToggleProximity,
   nearbyZones,
   proximityError,
   origin,
@@ -290,8 +286,6 @@ const MobilePanel = ({
             {/* Proximity alert */}
             <ProximityAlertBanner
               nearbyZones={nearbyZones}
-              enabled={proximityEnabled}
-              onToggle={onToggleProximity}
               error={proximityError}
             />
           </div>
