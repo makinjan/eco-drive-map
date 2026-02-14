@@ -196,7 +196,10 @@ const NavigationOverlay = ({
 
             {/* Route services */}
             {routeStatus === 'valid' && routePath.length > 0 && (
-              <RouteServices routePath={routePath} isVisible />
+              <RouteServices routePath={routePath} isVisible onAddToRoute={(place) => {
+                onDestinationSelect(place);
+                setShowSearch(false);
+              }} />
             )}
           </div>
         )}
