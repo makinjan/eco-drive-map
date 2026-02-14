@@ -38,7 +38,7 @@ interface UseNavigationOptions {
 const ARRIVAL_THRESHOLD_METERS = 50;
 const STEP_ADVANCE_THRESHOLD_METERS = 30;
 const ANNOUNCE_THRESHOLD_METERS = 150;
-const POI_ANNOUNCE_DISTANCE_METERS = 500;
+const POI_ANNOUNCE_DISTANCE_METERS = 5000;
 
 function stripHtml(html: string): string {
   const div = document.createElement('div');
