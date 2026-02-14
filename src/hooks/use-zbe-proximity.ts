@@ -13,7 +13,7 @@ interface UseZBEProximityOptions {
   radiusKm?: number;
 }
 
-export function useZBEProximity({ userTag, enabled, radiusKm = 20 }: UseZBEProximityOptions) {
+export function useZBEProximity({ userTag, enabled, radiusKm = 10 }: UseZBEProximityOptions) {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [nearbyZones, setNearbyZones] = useState<ProximityAlert[]>([]);
   const [error, setError] = useState<string | null>(null);
