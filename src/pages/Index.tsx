@@ -286,7 +286,7 @@ const Index = () => {
     }
   }, [origin, destination, selectedTag]);
 
-  const handleUseAltRoute = useCallback(() => {
+  const handleUseAltRoute = useCallback(async () => {
     if (!altRoute) return;
     setRoutePath(altRoute.path);
     setRouteDuration(altRoute.duration);
@@ -294,13 +294,15 @@ const Index = () => {
     setRouteStatus('valid');
     setValidationResult({ valid: true, blockedZones: [] });
 
-    // Update origin/destination if safe points were used
+    // Update origin/destination if safe points were used, reverse geocode for real address
     if (safeOrigin) {
-      setOrigin({ coordinates: safeOrigin.coordinates, name: `Punto seguro (fuera de ${safeOrigin.zoneName})` });
+      const place = await geocodeReverse(safeOrigin.coordinates);
+      setOrigin({ coordinates: safeOrigin.coordinates, name: place });
       setSafeOrigin(null);
     }
     if (safeDest) {
-      setDestination({ coordinates: safeDest.coordinates, name: `Punto seguro (fuera de ${safeDest.zoneName})` });
+      const place = await geocodeReverse(safeDest.coordinates);
+      setDestination({ coordinates: safeDest.coordinates, name: place });
       setSafeDest(null);
     }
 
@@ -331,6 +333,20 @@ const Index = () => {
 
   const handleOriginClear = useCallback(() => setOrigin(null), []);
   const handleDestClear = useCallback(() => setDestination(null), []);
+
+  // Reverse geocode coordinates to street address
+  const geocodeReverse = useCallback(async (coords: { lat: number; lng: number }): Promise<string> => {
+    try {
+      const geocoder = new google.maps.Geocoder();
+      const res = await geocoder.geocode({ location: coords });
+      if (res.results && res.results.length > 0) {
+        return res.results[0].formatted_address;
+      }
+    } catch (err) {
+      console.error('Reverse geocode error:', err);
+    }
+    return `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`;
+  }, []);
 
   // Voice command: geocode spoken address and set origin/destination
   const geocodeAddress = useCallback(async (address: string): Promise<PlaceResult | null> => {
