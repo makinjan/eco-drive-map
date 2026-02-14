@@ -32,6 +32,7 @@ interface UseNavigationOptions {
   origin: { lat: number; lng: number } | null;
   destination: { lat: number; lng: number } | null;
   onArrival?: () => void;
+  onReroute?: () => void;
   pois?: RoutePOI[];
 }
 
@@ -39,6 +40,8 @@ const ARRIVAL_THRESHOLD_METERS = 50;
 const STEP_ADVANCE_THRESHOLD_METERS = 30;
 const ANNOUNCE_THRESHOLD_METERS = 150;
 const POI_ANNOUNCE_DISTANCE_METERS = 5000;
+const OFF_ROUTE_THRESHOLD_METERS = 50;
+const REROUTE_COOLDOWN_MS = 10000;
 
 function stripHtml(html: string): string {
   const div = document.createElement('div');
@@ -48,7 +51,7 @@ function stripHtml(html: string): string {
 
 import { speak } from '@/lib/speak';
 
-export function useNavigation({ routePath, origin, destination, onArrival, pois = [] }: UseNavigationOptions) {
+export function useNavigation({ routePath, origin, destination, onArrival, onReroute, pois = [] }: UseNavigationOptions) {
   const [state, setState] = useState<NavigationState>({
     isNavigating: false,
     userPosition: null,
@@ -70,6 +73,8 @@ export function useNavigation({ routePath, origin, destination, onArrival, pois 
   const announcedStepsRef = useRef<Set<number>>(new Set());
   const preAnnouncedStepsRef = useRef<Set<number>>(new Set());
   const announcedPOIsRef = useRef<Set<string>>(new Set());
+  const lastRerouteRef = useRef<number>(0);
+
   useEffect(() => {
     if (routePath.length >= 2) {
       const line = turf.lineString(routePath.map((p) => [p.lng, p.lat]));
@@ -157,7 +162,6 @@ export function useNavigation({ routePath, origin, destination, onArrival, pois 
     const id = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude, heading, speed } = position.coords;
-        const userPos = { lat: latitude, lng: longitude };
         const userPt = turf.point([longitude, latitude]);
 
         const routeLine = routeLineRef.current;
@@ -166,6 +170,26 @@ export function useNavigation({ routePath, origin, destination, onArrival, pois 
         const snapped = turf.nearestPointOnLine(routeLine, userPt, { units: 'meters' });
         const nearestCoord = snapped.geometry.coordinates;
         const nearestPoint = { lat: nearestCoord[1], lng: nearestCoord[0] };
+        const distToRoute = snapped.properties.dist ?? 0;
+
+        // Off-route detection: recalculate if user deviates
+        if (distToRoute > OFF_ROUTE_THRESHOLD_METERS) {
+          const now = Date.now();
+          if (now - lastRerouteRef.current > REROUTE_COOLDOWN_MS) {
+            lastRerouteRef.current = now;
+            speak('Recalculando ruta.');
+            // Update origin to current real position for recalculation
+            setState((prev) => ({
+              ...prev,
+              userPosition: { lat: latitude, lng: longitude },
+            }));
+            onReroute?.();
+            return;
+          }
+        }
+
+        // Use snapped position (follows the road)
+        const userPos = nearestPoint;
 
         const snappedLocation = snapped.properties.location ?? 0;
         const totalDist = totalDistanceRef.current;
@@ -180,7 +204,6 @@ export function useNavigation({ routePath, origin, destination, onArrival, pois 
           let distToNext: number | null = null;
 
           if (prev.steps.length > 0) {
-            // Check if we're close to the next step's start
             for (let i = newStepIndex; i < prev.steps.length; i++) {
               const stepEnd = prev.steps[i].endLocation;
               const dist = turf.distance(userPt, turf.point([stepEnd.lng, stepEnd.lat]), { units: 'meters' });
@@ -190,13 +213,11 @@ export function useNavigation({ routePath, origin, destination, onArrival, pois 
               }
             }
 
-            // Calculate distance to current step's end
             if (newStepIndex < prev.steps.length) {
               const stepEnd = prev.steps[newStepIndex].endLocation;
               distToNext = turf.distance(userPt, turf.point([stepEnd.lng, stepEnd.lat]), { units: 'meters' });
             }
 
-            // Pre-announce next step when approaching
             const nextIdx = newStepIndex + 1;
             if (
               nextIdx < prev.steps.length &&
@@ -209,7 +230,6 @@ export function useNavigation({ routePath, origin, destination, onArrival, pois 
               speak(`En ${dist} metros, ${prev.steps[nextIdx].plainText}`);
             }
 
-            // Announce current step when advancing
             if (newStepIndex !== prev.currentStepIndex && !announcedStepsRef.current.has(newStepIndex)) {
               announcedStepsRef.current.add(newStepIndex);
               speak(prev.steps[newStepIndex].plainText);
@@ -245,6 +265,15 @@ export function useNavigation({ routePath, origin, destination, onArrival, pois 
         if (distanceRemaining < ARRIVAL_THRESHOLD_METERS) {
           speak('Has llegado a tu destino.');
           onArrival?.();
+          // Auto-stop navigation on arrival
+          if (watchIdRef.current !== null) {
+            navigator.geolocation.clearWatch(watchIdRef.current);
+            watchIdRef.current = null;
+          }
+          setState((prev) => ({
+            ...prev,
+            isNavigating: false,
+          }));
         }
       },
       (err) => {
