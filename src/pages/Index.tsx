@@ -459,17 +459,26 @@ const Index = () => {
             pois={routePOIs}
           />
         {nav.isNavigating && (
-          <NavigationOverlay
-            distanceRemaining={nav.distanceRemaining}
-            timeRemaining={nav.timeRemaining}
-            speed={nav.speed}
-            progressPercent={nav.progressPercent}
-            error={nav.error}
-            onStop={nav.stopNavigation}
-            currentStep={nav.steps[nav.currentStepIndex] ?? null}
-            nextStep={nav.steps[nav.currentStepIndex + 1] ?? null}
-            distanceToNextStep={nav.distanceToNextStep}
-          />
+          <>
+            <NavigationOverlay
+              distanceRemaining={nav.distanceRemaining}
+              timeRemaining={nav.timeRemaining}
+              speed={nav.speed}
+              progressPercent={nav.progressPercent}
+              error={nav.error}
+              onStop={nav.stopNavigation}
+              currentStep={nav.steps[nav.currentStepIndex] ?? null}
+              nextStep={nav.steps[nav.currentStepIndex + 1] ?? null}
+              distanceToNextStep={nav.distanceToNextStep}
+              onVoiceCommand={handleVoiceCommand}
+              isVoiceListening={voiceCommand.isListening}
+              onDestinationSelect={setDestination}
+              onDestinationClear={handleDestClear}
+              destName={destination?.name}
+              routePath={routePath}
+              routeStatus={routeStatus}
+            />
+          </>
         )}
         {!nav.isNavigating && (
           isMobile ? <MobilePanel {...panelProps} /> : <Sidebar {...panelProps} />

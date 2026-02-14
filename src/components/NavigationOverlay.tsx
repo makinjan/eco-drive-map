@@ -1,6 +1,8 @@
-import { Navigation, X, Locate, Volume2, VolumeX, ArrowUp, ArrowLeft, ArrowRight, CornerUpRight, CornerUpLeft } from 'lucide-react';
+import { Navigation, X, Locate, Volume2, VolumeX, ArrowUp, ArrowLeft, ArrowRight, CornerUpRight, CornerUpLeft, Search, Mic, MicOff, Fuel, UtensilsCrossed } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import SearchInput, { type PlaceResult } from './SearchInput';
+import RouteServices from './RouteServices';
 import type { NavigationStep } from '@/hooks/use-navigation';
 
 interface NavigationOverlayProps {
@@ -13,6 +15,13 @@ interface NavigationOverlayProps {
   currentStep: NavigationStep | null;
   nextStep: NavigationStep | null;
   distanceToNextStep: number | null;
+  onVoiceCommand: () => void;
+  isVoiceListening: boolean;
+  onDestinationSelect: (place: PlaceResult) => void;
+  onDestinationClear: () => void;
+  destName?: string;
+  routePath: { lat: number; lng: number }[];
+  routeStatus: string;
 }
 
 const ManeuverIcon = ({ maneuver }: { maneuver?: string }) => {
@@ -35,8 +44,16 @@ const NavigationOverlay = ({
   currentStep,
   nextStep,
   distanceToNextStep,
+  onVoiceCommand,
+  isVoiceListening,
+  onDestinationSelect,
+  onDestinationClear,
+  destName,
+  routePath,
+  routeStatus,
 }: NavigationOverlayProps) => {
   const [muted, setMuted] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   const toggleMute = () => {
     setMuted(!muted);
@@ -83,14 +100,24 @@ const NavigationOverlay = ({
                   </p>
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleMute}
-                className="shrink-0 text-white hover:bg-white/20 h-8 w-8"
-              >
-                {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-              </Button>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowSearch(!showSearch)}
+                  className="text-white hover:bg-white/20 h-8 w-8"
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleMute}
+                  className="text-white hover:bg-white/20 h-8 w-8"
+                >
+                  {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
 
             {/* Next step preview */}
@@ -111,6 +138,16 @@ const NavigationOverlay = ({
           <div className="bg-[#1a73e8] text-white px-4 py-3 flex items-center gap-2">
             <Locate className="h-5 w-5 animate-pulse" />
             <span className="text-sm font-medium">Obteniendo señal GPS...</span>
+            <div className="ml-auto">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowSearch(!showSearch)}
+                className="text-white hover:bg-white/20 h-8 w-8"
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         )}
 
@@ -121,6 +158,46 @@ const NavigationOverlay = ({
             <Button variant="ghost" size="icon" onClick={onStop} className="shrink-0 h-8 w-8">
               <X className="h-4 w-4" />
             </Button>
+          </div>
+        )}
+
+        {/* Search panel overlay */}
+        {showSearch && (
+          <div className="bg-background/95 backdrop-blur-md border-b border-border px-4 py-3 space-y-2.5">
+            <SearchInput
+              placeholder="Buscar nuevo destino..."
+              onSelect={(place) => {
+                onDestinationSelect(place);
+                setShowSearch(false);
+              }}
+              onClear={onDestinationClear}
+              icon="destination"
+              externalValue={destName}
+            />
+            <div className="flex gap-2">
+              <Button
+                onClick={onVoiceCommand}
+                variant="outline"
+                size="sm"
+                className={`flex-1 rounded-lg gap-2 h-9 ${isVoiceListening ? 'border-destructive/40 bg-destructive/10 text-destructive animate-pulse' : ''}`}
+              >
+                {isVoiceListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                {isVoiceListening ? 'Escuchando...' : 'Comando de voz'}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSearch(false)}
+                className="rounded-lg h-9 px-3 text-muted-foreground"
+              >
+                Cerrar
+              </Button>
+            </div>
+
+            {/* Route services */}
+            {routeStatus === 'valid' && routePath.length > 0 && (
+              <RouteServices routePath={routePath} isVisible />
+            )}
           </div>
         )}
       </div>
