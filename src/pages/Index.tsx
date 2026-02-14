@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useZBEProximity } from '@/hooks/use-zbe-proximity';
+import { useWakeLock } from '@/hooks/use-wake-lock';
 import { useNavigation } from '@/hooks/use-navigation';
 import { useVoiceInput, parseVoiceCommand } from '@/hooks/use-voice-input';
 import { LoadScript } from '@react-google-maps/api';
@@ -326,6 +327,8 @@ const Index = () => {
     onArrival: handleArrival,
     pois: routePOIs,
   });
+
+  useWakeLock(nav.isNavigating);
 
   const handleStartNavigation = useCallback(() => {
     nav.startNavigation();
