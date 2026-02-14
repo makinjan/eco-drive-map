@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route, ParkingCircle, MapPin, Mic, MicOff } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import ProximityAlertBanner from './ProximityAlertBanner';
+import RouteServices from './RouteServices';
 import { Button } from '@/components/ui/button';
 import TagSelector from './TagSelector';
 import SearchInput, { type PlaceResult } from './SearchInput';
@@ -31,12 +32,10 @@ interface MobilePanelProps {
   onOriginClear?: () => void;
   onDestinationSelect: (place: PlaceResult) => void;
   onDestinationClear?: () => void;
-  onCalculateRoute: () => void;
   routeStatus: 'idle' | 'loading' | 'valid' | 'invalid' | 'no-route';
   validationResult: ValidationResult | null;
   routeDuration: number | null;
   routeDistance: number | null;
-  canCalculate: boolean;
   altRoute: RouteInfo | null;
   onUseAltRoute: () => void;
   safeOrigin: SafePoint | null;
@@ -51,6 +50,7 @@ interface MobilePanelProps {
   isVoiceListening: boolean;
   originName?: string;
   destName?: string;
+  routePath: { lat: number; lng: number }[];
 }
 
 const MobilePanel = ({
@@ -60,12 +60,10 @@ const MobilePanel = ({
   onOriginClear,
   onDestinationSelect,
   onDestinationClear,
-  onCalculateRoute,
   routeStatus,
   validationResult,
   routeDuration,
   routeDistance,
-  canCalculate,
   altRoute,
   onUseAltRoute,
   safeOrigin,
@@ -80,6 +78,7 @@ const MobilePanel = ({
   isVoiceListening,
   originName,
   destName,
+  routePath,
 }: MobilePanelProps) => {
   const [expanded, setExpanded] = useState(true);
 
@@ -130,35 +129,23 @@ const MobilePanel = ({
             <SearchInput placeholder="Origen" onSelect={onOriginSelect} onClear={onOriginClear} icon="origin" autoGeolocate externalValue={originName} />
             <SearchInput placeholder="Destino" onSelect={onDestinationSelect} onClear={onDestinationClear} icon="destination" externalValue={destName} />
 
-            <div className="flex gap-2">
-              <Button
-                onClick={onCalculateRoute}
-                disabled={!canCalculate || routeStatus === 'loading'}
-                className="flex-1 font-semibold h-11 rounded-xl text-sm shadow-sm"
-                size="lg"
-              >
-                {routeStatus === 'loading' ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Calculando...
-                  </>
-                ) : (
-                  <>
-                    <Navigation className="mr-2 h-4 w-4" />
-                    Calcular ruta
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={onVoiceCommand}
-                variant="outline"
-                size="lg"
-                className={`h-11 w-11 rounded-xl shrink-0 p-0 ${isVoiceListening ? 'border-destructive/40 bg-destructive/10 text-destructive animate-pulse' : ''}`}
-                title="Comando de voz"
-              >
-                {isVoiceListening ? <MicOff className="h-4.5 w-4.5" /> : <Mic className="h-4.5 w-4.5" />}
-              </Button>
-            </div>
+            {routeStatus === 'loading' && (
+              <div className="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Calculando ruta...
+              </div>
+            )}
+
+            <Button
+              onClick={onVoiceCommand}
+              variant="outline"
+              size="lg"
+              className={`w-full h-11 rounded-xl gap-2 ${isVoiceListening ? 'border-destructive/40 bg-destructive/10 text-destructive animate-pulse' : ''}`}
+              title="Comando de voz"
+            >
+              {isVoiceListening ? <MicOff className="h-4.5 w-4.5" /> : <Mic className="h-4.5 w-4.5" />}
+              {isVoiceListening ? 'Escuchando...' : 'Comando de voz'}
+            </Button>
 
             {/* Route result */}
             {routeStatus !== 'idle' && routeStatus !== 'loading' && (
@@ -281,6 +268,11 @@ const MobilePanel = ({
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Route services */}
+            {routeStatus === 'valid' && routePath.length > 0 && (
+              <RouteServices routePath={routePath} isVisible />
             )}
 
             {/* Proximity alert */}

@@ -311,7 +311,7 @@ const Index = () => {
     searchPOIsAlongRoute(altRoute.path);
   }, [altRoute, searchPOIsAlongRoute, safeOrigin, safeDest]);
 
-  const canCalculate = !!origin && !!destination && !!selectedTag;
+
   const isMobile = useIsMobile();
 
   const handleArrival = useCallback(() => {
@@ -363,7 +363,7 @@ const Index = () => {
     return null;
   }, []);
 
-  const pendingVoiceCalc = useRef(false);
+  
 
   const voiceCommand = useVoiceInput({
     onResult: async (transcript) => {
@@ -384,7 +384,7 @@ const Index = () => {
         const destPlace = await geocodeAddress(parsed.destination);
         if (destPlace) {
           setDestination(destPlace);
-          pendingVoiceCalc.current = true;
+          setDestination(destPlace);
         } else {
           toast.error(`No se encontró: "${parsed.destination}"`);
         }
@@ -393,10 +393,9 @@ const Index = () => {
     onError: (err) => toast.error(err),
   });
 
-  // Auto-calculate when voice command sets destination
+  // Auto-calculate when destination is set (or voice command)
   useEffect(() => {
-    if (pendingVoiceCalc.current && origin && destination) {
-      pendingVoiceCalc.current = false;
+    if (origin && destination) {
       calculateRoute();
     }
   }, [origin, destination, calculateRoute]);
@@ -424,12 +423,10 @@ const Index = () => {
     onOriginClear: handleOriginClear,
     onDestinationSelect: setDestination,
     onDestinationClear: handleDestClear,
-    onCalculateRoute: calculateRoute,
     routeStatus,
     validationResult,
     routeDuration,
     routeDistance,
-    canCalculate,
     altRoute,
     onUseAltRoute: handleUseAltRoute,
     safeOrigin,
@@ -444,6 +441,7 @@ const Index = () => {
     isVoiceListening: voiceCommand.isListening,
     originName: origin?.name,
     destName: destination?.name,
+    routePath,
   };
 
   return (
