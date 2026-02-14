@@ -317,16 +317,24 @@ const Index = () => {
 
   const handleArrival = useCallback(() => {
     toast.success('🏁 ¡Has llegado a tu destino!');
-    nav.stopNavigation();
   }, []);
+
+  const rerouteRef = useRef<(() => void) | null>(null);
 
   const nav = useNavigation({
     routePath,
     origin: origin?.coordinates ?? null,
     destination: destination?.coordinates ?? null,
     onArrival: handleArrival,
+    onReroute: () => rerouteRef.current?.(),
     pois: routePOIs,
   });
+
+  rerouteRef.current = useCallback(() => {
+    if (nav.userPosition && destination) {
+      setOrigin({ coordinates: nav.userPosition, name: 'Tu ubicación actual' });
+    }
+  }, [nav.userPosition, destination]);
 
   useWakeLock(nav.isNavigating);
 
