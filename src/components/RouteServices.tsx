@@ -1,12 +1,12 @@
-import { Fuel, UtensilsCrossed, Loader2, MapPin, Plus } from 'lucide-react';
+import { Fuel, UtensilsCrossed, Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { speak } from '@/lib/speak';
 
 interface NearestPOI {
   name: string;
   position: { lat: number; lng: number };
-  distance: number; // meters
+  distance: number;
 }
 
 interface RouteServicesProps {
@@ -18,83 +18,150 @@ interface RouteServicesProps {
 const RouteServices = ({ routePath, isVisible, onAddToRoute }: RouteServicesProps) => {
   const [loadingType, setLoadingType] = useState<string | null>(null);
   const [result, setResult] = useState<{ type: string; poi: NearestPOI } | null>(null);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
   const formatDist = (meters: number) =>
     meters >= 1000 ? `${(meters / 1000).toFixed(1)} kilómetros` : `${meters} metros`;
+
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+      recognitionRef.current = null;
+    }
+    setAwaitingConfirmation(false);
+  }, []);
+
+  const listenForConfirmation = useCallback((poi: NearestPOI, label: string) => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      // No speech recognition available, just show the button
+      return;
+    }
+
+    setAwaitingConfirmation(true);
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-ES';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 3;
+    recognitionRef.current = recognition;
+
+    recognition.onresult = (event: any) => {
+      const results = event.results[0];
+      let said = '';
+      for (let i = 0; i < results.length; i++) {
+        said += ' ' + results[i].transcript.toLowerCase();
+      }
+      said = said.trim();
+
+      const isYes = /\b(sí|si|vale|ok|claro|venga|añade|añadir|afirmativo|por supuesto)\b/.test(said);
+      const isNo = /\b(no|nada|cancelar|cancela|déjalo|dejalo|paso)\b/.test(said);
+
+      if (isYes && onAddToRoute) {
+        onAddToRoute({ coordinates: poi.position, name: poi.name });
+        speak(`${poi.name} añadido como destino. Recalculando ruta.`);
+        setResult(null);
+      } else if (isNo) {
+        speak('De acuerdo, no se añade.');
+        setResult(null);
+      } else {
+        speak('No te he entendido. Puedes pulsar el botón para añadirlo.');
+      }
+      setAwaitingConfirmation(false);
+    };
+
+    recognition.onerror = () => {
+      setAwaitingConfirmation(false);
+    };
+
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      setAwaitingConfirmation(false);
+    };
+
+    // Small delay so the speech finishes before listening
+    setTimeout(() => {
+      try { recognition.start(); } catch {}
+    }, 3500);
+  }, [onAddToRoute]);
 
   const findNearest = useCallback(async (type: 'gas_station' | 'restaurant') => {
     if (routePath.length < 2) return;
     setLoadingType(type);
     setResult(null);
+    stopListening();
 
     try {
+      // Get current user position
+      const userPos = await new Promise<{ lat: number; lng: number }>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          (err) => reject(err),
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      });
+
       const service = new google.maps.places.PlacesService(document.createElement('div'));
 
-      const sampleCount = Math.min(5, Math.floor(routePath.length / 5));
-      const indices = Array.from({ length: sampleCount }, (_, i) =>
-        Math.floor((routePath.length * (i + 1)) / (sampleCount + 1))
-      );
+      const results = await new Promise<google.maps.places.PlaceResult[]>((resolve) => {
+        service.nearbySearch(
+          { location: userPos, radius: 20000, type },
+          (res, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && res) resolve(res);
+            else resolve([]);
+          }
+        );
+      });
 
       let best: NearestPOI | null = null;
 
-      for (const idx of indices) {
-        const pt = routePath[idx];
-        if (!pt) continue;
+      for (const r of results) {
+        if (!r.geometry?.location) continue;
+        const pos = { lat: r.geometry.location.lat(), lng: r.geometry.location.lng() };
+        const dist = google.maps.geometry?.spherical?.computeDistanceBetween(
+          new google.maps.LatLng(userPos.lat, userPos.lng),
+          new google.maps.LatLng(pos.lat, pos.lng)
+        ) ?? 99999;
 
-        const results = await new Promise<google.maps.places.PlaceResult[]>((resolve) => {
-          service.nearbySearch(
-            { location: pt, radius: 5000, type },
-            (res, status) => {
-              if (status === google.maps.places.PlacesServiceStatus.OK && res) resolve(res);
-              else resolve([]);
-            }
-          );
-        });
-
-        for (const r of results) {
-          if (!r.geometry?.location) continue;
-          const pos = { lat: r.geometry.location.lat(), lng: r.geometry.location.lng() };
-          const dist = google.maps.geometry?.spherical?.computeDistanceBetween(
-            new google.maps.LatLng(pt.lat, pt.lng),
-            new google.maps.LatLng(pos.lat, pos.lng)
-          ) ?? 99999;
-
-          if (!best || dist < best.distance) {
-            best = { name: r.name || 'Sin nombre', position: pos, distance: Math.round(dist) };
-          }
+        if (!best || dist < best.distance) {
+          best = { name: r.name || 'Sin nombre', position: pos, distance: Math.round(dist) };
         }
       }
 
-      if (best) {
-        const label = type === 'gas_station' ? 'gasolinera' : 'restaurante';
-        setResult({ type: label, poi: best });
+      const label = type === 'gas_station' ? 'gasolinera' : 'restaurante';
 
-        // Announce by voice
+      if (best) {
+        setResult({ type: label, poi: best });
         const distText = formatDist(best.distance);
         speak(
-          `La ${label} más cercana en tu ruta es ${best.name}, a ${distText}. ¿Quieres añadirla como destino?`
+          `La ${label} más cercana es ${best.name}, a ${distText}. ¿Quieres añadirla a la ruta?`
         );
+        // Start listening for voice confirmation
+        listenForConfirmation(best, label);
       } else {
-        const label = type === 'gas_station' ? 'gasolineras' : 'restaurantes';
-        speak(`No se encontraron ${label} cerca de tu ruta.`);
+        const labelPlural = type === 'gas_station' ? 'gasolineras' : 'restaurantes';
+        speak(`No se encontraron ${labelPlural} en 20 kilómetros.`);
       }
     } catch (err) {
       console.error('POI search error:', err);
-      speak('Error al buscar servicios en la ruta.');
+      speak('Error al buscar servicios cercanos.');
     } finally {
       setLoadingType(null);
     }
-  }, [routePath]);
+  }, [routePath, stopListening, listenForConfirmation]);
 
   const handleAddToRoute = useCallback(() => {
     if (!result || !onAddToRoute) return;
+    stopListening();
     onAddToRoute({
       coordinates: result.poi.position,
       name: result.poi.name,
     });
     speak(`${result.poi.name} añadido como destino. Recalculando ruta.`);
     setResult(null);
-  }, [result, onAddToRoute]);
+  }, [result, onAddToRoute, stopListening]);
 
   if (!isVisible) return null;
 
@@ -139,8 +206,13 @@ const RouteServices = ({ routePath, isVisible, onAddToRoute }: RouteServicesProp
             {result.poi.name}
           </div>
           <p className="text-[11px] text-muted-foreground">
-            A {result.poi.distance >= 1000 ? `${(result.poi.distance / 1000).toFixed(1)} km` : `${result.poi.distance} m`} de la ruta
+            A {result.poi.distance >= 1000 ? `${(result.poi.distance / 1000).toFixed(1)} km` : `${result.poi.distance} m`} de tu posición
           </p>
+          {awaitingConfirmation && (
+            <p className="text-[11px] text-primary animate-pulse font-medium">
+              🎙️ Escuchando... di "sí" o "no"
+            </p>
+          )}
           {onAddToRoute && (
             <Button
               variant="default"
