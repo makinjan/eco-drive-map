@@ -294,10 +294,21 @@ const Index = () => {
     setRouteDistance(altRoute.distance);
     setRouteStatus('valid');
     setValidationResult({ valid: true, blockedZones: [] });
+
+    // Update origin/destination if safe points were used
+    if (safeOrigin) {
+      setOrigin({ coordinates: safeOrigin.coordinates, name: `Punto seguro (fuera de ${safeOrigin.zoneName})` });
+      setSafeOrigin(null);
+    }
+    if (safeDest) {
+      setDestination({ coordinates: safeDest.coordinates, name: `Punto seguro (fuera de ${safeDest.zoneName})` });
+      setSafeDest(null);
+    }
+
     setAltRoute(null);
     toast.success('✅ Ruta alternativa aplicada');
     searchPOIsAlongRoute(altRoute.path);
-  }, [altRoute, searchPOIsAlongRoute]);
+  }, [altRoute, searchPOIsAlongRoute, safeOrigin, safeDest]);
 
   const canCalculate = !!origin && !!destination && !!selectedTag;
   const isMobile = useIsMobile();
