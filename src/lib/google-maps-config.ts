@@ -9,4 +9,13 @@ export const MAP_OPTIONS: google.maps.MapOptions = {
   mapTypeControl: false,
   streetViewControl: false,
   fullscreenControl: false,
+  restriction: {
+    latLngBounds: {
+      north: 44.0,
+      south: 27.5,
+      west: -18.5,
+      east: 5.5,
+    },
+    strictBounds: false,
+  },
 };
