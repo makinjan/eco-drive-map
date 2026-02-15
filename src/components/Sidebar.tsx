@@ -299,7 +299,7 @@ const Sidebar = ({
         {/* Route services */}
         {routeStatus === 'valid' && routePath.length > 0 && (
           <div className="px-5 pb-3">
-            <RouteServices routePath={routePath} isVisible onAddToRoute={(place) => onDestinationSelect(place)} />
+            <RouteServices routePath={routePath} isVisible onAddToRoute={(place) => onDestinationSelect(place)} destination={destination} />
           </div>
         )}
 

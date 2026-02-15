@@ -272,7 +272,7 @@ const MobilePanel = ({
 
             {/* Route services */}
             {routeStatus === 'valid' && routePath.length > 0 && (
-              <RouteServices routePath={routePath} isVisible onAddToRoute={(place) => onDestinationSelect(place)} />
+              <RouteServices routePath={routePath} isVisible onAddToRoute={(place) => onDestinationSelect(place)} destination={destination} />
             )}
 
             {/* Proximity alert */}
