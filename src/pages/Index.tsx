@@ -17,6 +17,7 @@ import type { ValidationResult } from '@/lib/route-validator';
 import type { PlaceResult } from '@/components/SearchInput';
 import { toast } from 'sonner';
 import { speak } from '@/lib/speak';
+import { useRouteHistory, useFavorites } from '@/hooks/use-route-history';
 
 type RouteStatus = 'idle' | 'loading' | 'valid' | 'invalid' | 'no-route';
 
@@ -190,6 +191,11 @@ const Index = () => {
           speak('Ruta libre de restricciones para tu etiqueta.');
         }
         searchPOIsAlongRoute(routeInfos[0].path);
+        addToHistory(
+          { name: origin.name, coordinates: origin.coordinates },
+          { name: destination.name, coordinates: destination.coordinates },
+          selectedTag
+        );
       } else if (validIndex > 0) {
         // Main route blocked, but an alternative is valid
         setRoutePath(routeInfos[0].path);
@@ -326,6 +332,8 @@ const Index = () => {
     searchPOIsAlongRoute(altRoute.path);
   }, [altRoute, searchPOIsAlongRoute, safeOrigin, safeDest]);
 
+  const { history, addToHistory, clearHistory } = useRouteHistory();
+  const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites();
 
   const isMobile = useIsMobile();
 
@@ -467,6 +475,12 @@ const Index = () => {
     originName: origin?.name,
     destName: destination?.name,
     routePath,
+    history,
+    favorites,
+    onAddFavorite: addFavorite,
+    onRemoveFavorite: removeFavorite,
+    isFavorite,
+    onClearHistory: clearHistory,
   };
 
   return (

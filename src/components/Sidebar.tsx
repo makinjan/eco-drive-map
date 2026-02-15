@@ -2,10 +2,12 @@ import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, Rout
 import ThemeToggle from './ThemeToggle';
 import RouteServices from './RouteServices';
 import ProximityAlertBanner from './ProximityAlertBanner';
+import HistoryFavoritesPanel from './HistoryFavoritesPanel';
 import { Button } from '@/components/ui/button';
 import TagSelector from './TagSelector';
 import SearchInput, { type PlaceResult } from './SearchInput';
 import type { ValidationResult } from '@/lib/route-validator';
+import type { SavedPlace, RouteHistoryEntry } from '@/hooks/use-route-history';
 
 interface RouteInfo {
   path: { lat: number; lng: number }[];
@@ -50,6 +52,12 @@ interface SidebarProps {
   originName?: string;
   destName?: string;
   routePath: { lat: number; lng: number }[];
+  history: RouteHistoryEntry[];
+  favorites: SavedPlace[];
+  onAddFavorite: (place: SavedPlace) => void;
+  onRemoveFavorite: (name: string) => void;
+  isFavorite: (name: string) => boolean;
+  onClearHistory: () => void;
 }
 
 const Sidebar = ({
@@ -78,6 +86,12 @@ const Sidebar = ({
   originName,
   destName,
   routePath,
+  history,
+  favorites,
+  onAddFavorite,
+  onRemoveFavorite,
+  isFavorite,
+  onClearHistory,
 }: SidebarProps) => {
   const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -158,6 +172,22 @@ const Sidebar = ({
             {isVoiceListening ? 'Escuchando...' : 'Comando de voz'}
           </Button>
         </div>
+
+        {/* History & Favorites */}
+        {routeStatus === 'idle' && (
+          <div className="px-5 pb-3">
+            <HistoryFavoritesPanel
+              history={history}
+              favorites={favorites}
+              onSelectRoute={(o, d) => { onOriginSelect(o); onDestinationSelect(d); }}
+              onSelectDestination={(d) => onDestinationSelect(d)}
+              onAddFavorite={onAddFavorite}
+              onRemoveFavorite={onRemoveFavorite}
+              isFavorite={isFavorite}
+              onClearHistory={onClearHistory}
+            />
+          </div>
+        )}
 
         {/* Route result */}
         {routeStatus !== 'idle' && routeStatus !== 'loading' && (
