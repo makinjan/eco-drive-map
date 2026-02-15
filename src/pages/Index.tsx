@@ -269,17 +269,19 @@ const Index = () => {
             const retryValidation = validateRoute(pathToGeometry(retryInfo.path), selectedTag);
             const newBlockedIds = retryValidation.blockedZones.map((z) => z.id);
             const extraWaypoints = getAvoidanceWaypoints(newBlockedIds, altOrigin, altDest);
-            // Merge unique waypoints
-            const wpSet = new Set(currentWaypoints.map(w => `${w.lat},${w.lng}`));
+            
+            // Track count before merging to detect if new waypoints were added
+            const prevCount = currentWaypoints.length;
+            const existingKeys = new Set(currentWaypoints.map(w => `${w.lat.toFixed(6)},${w.lng.toFixed(6)}`));
             for (const wp of extraWaypoints) {
-              const key = `${wp.lat},${wp.lng}`;
-              if (!wpSet.has(key)) {
+              const key = `${wp.lat.toFixed(6)},${wp.lng.toFixed(6)}`;
+              if (!existingKeys.has(key)) {
                 currentWaypoints.push(wp);
-                wpSet.add(key);
+                existingKeys.add(key);
               }
             }
             // If no new waypoints were added, stop iterating
-            if (extraWaypoints.every(wp => wpSet.has(`${wp.lat},${wp.lng}`) && currentWaypoints.length === wpSet.size)) break;
+            if (currentWaypoints.length === prevCount) break;
           } catch (avoidErr) {
             console.error('Avoidance route error (attempt ' + attempt + '):', avoidErr);
             break;
