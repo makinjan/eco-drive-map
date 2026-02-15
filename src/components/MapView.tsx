@@ -2,6 +2,8 @@ import { useCallback, useRef, useEffect, useState } from 'react';
 import { GoogleMap, Polygon, Marker, Polyline, InfoWindow, TrafficLayer } from '@react-google-maps/api';
 import { SPAIN_CENTER, INITIAL_ZOOM, MAP_OPTIONS } from '@/lib/google-maps-config';
 import { zbeZones, type ZBEProperties } from '@/data/zbe-zones';
+import { radaresSpain } from '@/data/radares-spain';
+import * as turf from '@turf/turf';
 
 export interface RoutePOI {
   id: string;
@@ -278,6 +280,31 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
           title={poi.name}
         />
       ))}
+
+      {/* Radar markers - show near route or at high zoom */}
+      {routePath.length > 0 && (() => {
+        try {
+          const routeLine = turf.lineString(routePath.map(p => [p.lng, p.lat]));
+          return radaresSpain.filter(r => {
+            const dist = turf.pointToLineDistance(turf.point([r.lng, r.lat]), routeLine, { units: 'meters' });
+            return dist < 3000; // Only show radars within 3km of route
+          }).map(radar => (
+            <Marker
+              key={radar.id}
+              position={{ lat: radar.lat, lng: radar.lng }}
+              icon={{
+                path: 'M -6,-6 L 6,-6 L 6,6 L -6,6 Z',
+                scale: 1,
+                fillColor: '#ef4444',
+                fillOpacity: 0.95,
+                strokeColor: '#fff',
+                strokeWeight: 1.5,
+              }}
+              title={`${radar.type === 'tramo' ? 'Radar tramo' : 'Radar fijo'} — ${radar.road} km ${radar.km} — ${radar.speed_limit} km/h`}
+            />
+          ));
+        } catch { return null; }
+      })()}
     </GoogleMap>
   );
 };

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as turf from '@turf/turf';
 import type { RoutePOI } from '@/components/MapView';
+import { radaresSpain, type RadarPoint } from '@/data/radares-spain';
 
 export interface NavigationStep {
   instruction: string; // HTML instructions from Google
@@ -34,6 +35,7 @@ interface UseNavigationOptions {
   onArrival?: () => void;
   onReroute?: () => void;
   pois?: RoutePOI[];
+  onRadarNearby?: (radar: RadarPoint, distance: number) => void;
 }
 
 const ARRIVAL_THRESHOLD_METERS = 50;
@@ -45,6 +47,8 @@ const OFF_ROUTE_THRESHOLD_METERS = 50;
 const REROUTE_COOLDOWN_MS = 10000;
 const TRAFFIC_CHECK_INTERVAL_MS = 120000; // Check traffic every 2 min
 const TRAFFIC_DELAY_THRESHOLD = 1.25; // 25% longer = announce
+const RADAR_PRE_WARN_DISTANCE_METERS = 2000;
+const RADAR_WARN_DISTANCE_METERS = 800;
 
 function stripHtml(html: string): string {
   const div = document.createElement('div');
@@ -54,7 +58,7 @@ function stripHtml(html: string): string {
 
 import { speak } from '@/lib/speak';
 
-export function useNavigation({ routePath, origin, destination, onArrival, onReroute, pois = [] }: UseNavigationOptions) {
+export function useNavigation({ routePath, origin, destination, onArrival, onReroute, pois = [], onRadarNearby }: UseNavigationOptions) {
   const [state, setState] = useState<NavigationState>({
     isNavigating: false,
     userPosition: null,
@@ -80,6 +84,8 @@ export function useNavigation({ routePath, origin, destination, onArrival, onRer
   const lastRerouteRef = useRef<number>(0);
   const lastTrafficCheckRef = useRef<number>(0);
   const lastAnnouncedDelayRef = useRef<number>(0);
+  const preWarnedRadarsRef = useRef<Set<string>>(new Set());
+  const warnedRadarsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (routePath.length >= 2) {
@@ -148,6 +154,8 @@ export function useNavigation({ routePath, origin, destination, onArrival, onRer
     preAnnouncedStepsRef.current = new Set();
     remindedStepsRef.current = new Set();
     announcedPOIsRef.current = new Set();
+    preWarnedRadarsRef.current = new Set();
+    warnedRadarsRef.current = new Set();
 
     setState((s) => ({
       ...s,
@@ -278,6 +286,21 @@ export function useNavigation({ routePath, origin, destination, onArrival, onRer
             announcedPOIsRef.current.add(poi.id);
             const label = poi.type === 'gas_station' ? 'gasolinera' : 'área de servicio';
             speak(`${label} cercana: ${poi.name}, a ${Math.round(dist)} metros`);
+          }
+        }
+
+        // Radar proximity detection
+        for (const radar of radaresSpain) {
+          const radarDist = turf.distance(userPt, turf.point([radar.lng, radar.lat]), { units: 'meters' });
+          if (radarDist < RADAR_PRE_WARN_DISTANCE_METERS && !preWarnedRadarsRef.current.has(radar.id)) {
+            preWarnedRadarsRef.current.add(radar.id);
+            const typeLabel = radar.type === 'tramo' ? 'Radar de tramo' : 'Radar fijo';
+            speak(`${typeLabel} a ${Math.round(radarDist)} metros. Límite ${radar.speed_limit} kilómetros por hora. ${radar.road}.`);
+            onRadarNearby?.(radar, radarDist);
+          }
+          if (radarDist < RADAR_WARN_DISTANCE_METERS && !warnedRadarsRef.current.has(radar.id)) {
+            warnedRadarsRef.current.add(radar.id);
+            speak(`¡Atención! Radar a ${Math.round(radarDist)} metros. Límite ${radar.speed_limit}.`);
           }
         }
 
