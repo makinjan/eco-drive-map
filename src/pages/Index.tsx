@@ -25,6 +25,7 @@ const LIBRARIES: ('places')[] = ['places'];
 interface RouteInfo {
   path: { lat: number; lng: number }[];
   duration: number | null;
+  durationInTraffic: number | null;
   distance: number | null;
 }
 
@@ -66,6 +67,7 @@ const Index = () => {
     return {
       path,
       duration: leg.duration?.value ?? null,
+      durationInTraffic: (leg as any).duration_in_traffic?.value ?? null,
       distance: leg.distance?.value ?? null,
     };
   };
@@ -149,6 +151,10 @@ const Index = () => {
         destination: destination.coordinates,
         travelMode: google.maps.TravelMode.DRIVING,
         provideRouteAlternatives: true,
+        drivingOptions: {
+          departureTime: new Date(),
+          trafficModel: google.maps.TrafficModel.BEST_GUESS,
+        },
       });
 
       if (!result.routes || result.routes.length === 0) {
@@ -169,17 +175,25 @@ const Index = () => {
       if (validIndex === 0) {
         // Main route is valid
         setRoutePath(routeInfos[0].path);
-        setRouteDuration(routeInfos[0].duration);
+        setRouteDuration(routeInfos[0].durationInTraffic ?? routeInfos[0].duration);
         setRouteDistance(routeInfos[0].distance);
         setRouteStatus('valid');
         setValidationResult(validations[0]);
         toast.success('✅ Ruta legal para tu etiqueta');
-        speak('Ruta libre de restricciones para tu etiqueta.');
+        // Announce traffic status
+        const trafficDur = routeInfos[0].durationInTraffic;
+        const baseDur = routeInfos[0].duration;
+        if (trafficDur && baseDur && trafficDur > baseDur * 1.2) {
+          const delayMin = Math.round((trafficDur - baseDur) / 60);
+          speak(`Ruta libre de restricciones. Atención: hay ${delayMin} minutos de retraso por tráfico.`);
+        } else {
+          speak('Ruta libre de restricciones para tu etiqueta.');
+        }
         searchPOIsAlongRoute(routeInfos[0].path);
       } else if (validIndex > 0) {
         // Main route blocked, but an alternative is valid
         setRoutePath(routeInfos[0].path);
-        setRouteDuration(routeInfos[0].duration);
+        setRouteDuration(routeInfos[0].durationInTraffic ?? routeInfos[0].duration);
         setRouteDistance(routeInfos[0].distance);
         setRouteStatus('invalid');
         setValidationResult(validations[0]);
@@ -193,7 +207,7 @@ const Index = () => {
         const blockedZoneIds = validations[0].blockedZones.map((z) => z.id);
 
         setRoutePath(routeInfos[0].path);
-        setRouteDuration(routeInfos[0].duration);
+        setRouteDuration(routeInfos[0].durationInTraffic ?? routeInfos[0].duration);
         setRouteDistance(routeInfos[0].distance);
         setRouteStatus('invalid');
         setValidationResult(validations[0]);
@@ -290,7 +304,7 @@ const Index = () => {
   const handleUseAltRoute = useCallback(async () => {
     if (!altRoute) return;
     setRoutePath(altRoute.path);
-    setRouteDuration(altRoute.duration);
+    setRouteDuration(altRoute.durationInTraffic ?? altRoute.duration);
     setRouteDistance(altRoute.distance);
     setRouteStatus('valid');
     setValidationResult({ valid: true, blockedZones: [] });

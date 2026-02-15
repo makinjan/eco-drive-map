@@ -43,6 +43,8 @@ const REMIND_THRESHOLD_METERS = 500;
 const POI_ANNOUNCE_DISTANCE_METERS = 5000;
 const OFF_ROUTE_THRESHOLD_METERS = 50;
 const REROUTE_COOLDOWN_MS = 10000;
+const TRAFFIC_CHECK_INTERVAL_MS = 120000; // Check traffic every 2 min
+const TRAFFIC_DELAY_THRESHOLD = 1.25; // 25% longer = announce
 
 function stripHtml(html: string): string {
   const div = document.createElement('div');
@@ -76,6 +78,8 @@ export function useNavigation({ routePath, origin, destination, onArrival, onRer
   const remindedStepsRef = useRef<Set<number>>(new Set());
   const announcedPOIsRef = useRef<Set<string>>(new Set());
   const lastRerouteRef = useRef<number>(0);
+  const lastTrafficCheckRef = useRef<number>(0);
+  const lastAnnouncedDelayRef = useRef<number>(0);
 
   useEffect(() => {
     if (routePath.length >= 2) {
@@ -274,6 +278,36 @@ export function useNavigation({ routePath, origin, destination, onArrival, onRer
             announcedPOIsRef.current.add(poi.id);
             const label = poi.type === 'gas_station' ? 'gasolinera' : 'área de servicio';
             speak(`${label} cercana: ${poi.name}, a ${Math.round(dist)} metros`);
+          }
+        }
+
+        // Periodic traffic check during navigation
+        const now = Date.now();
+        if (destination && now - lastTrafficCheckRef.current > TRAFFIC_CHECK_INTERVAL_MS && distanceRemaining > 1000) {
+          lastTrafficCheckRef.current = now;
+          try {
+            const ds = new google.maps.DirectionsService();
+            ds.route({
+              origin: { lat: latitude, lng: longitude },
+              destination,
+              travelMode: google.maps.TravelMode.DRIVING,
+              drivingOptions: { departureTime: new Date(), trafficModel: google.maps.TrafficModel.BEST_GUESS },
+            }, (res, status) => {
+              if (status === 'OK' && res?.routes?.[0]?.legs?.[0]) {
+                const leg = res.routes[0].legs[0];
+                const baseDur = leg.duration?.value ?? 0;
+                const trafficDur = (leg as any).duration_in_traffic?.value ?? baseDur;
+                if (trafficDur > baseDur * TRAFFIC_DELAY_THRESHOLD && trafficDur !== lastAnnouncedDelayRef.current) {
+                  lastAnnouncedDelayRef.current = trafficDur;
+                  const delayMin = Math.round((trafficDur - baseDur) / 60);
+                  speak(`Atención: tráfico denso en tu ruta. Retraso estimado de ${delayMin} minutos.`);
+                }
+                // Update ETA with traffic
+                setState(prev => ({ ...prev, timeRemaining: trafficDur }));
+              }
+            });
+          } catch (e) {
+            console.error('Traffic check error:', e);
           }
         }
 
