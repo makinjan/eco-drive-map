@@ -39,6 +39,7 @@ interface UseNavigationOptions {
 const ARRIVAL_THRESHOLD_METERS = 50;
 const STEP_ADVANCE_THRESHOLD_METERS = 30;
 const ANNOUNCE_THRESHOLD_METERS = 3000;
+const REMIND_THRESHOLD_METERS = 500;
 const POI_ANNOUNCE_DISTANCE_METERS = 5000;
 const OFF_ROUTE_THRESHOLD_METERS = 50;
 const REROUTE_COOLDOWN_MS = 10000;
@@ -72,6 +73,7 @@ export function useNavigation({ routePath, origin, destination, onArrival, onRer
   const totalDistanceRef = useRef<number>(0);
   const announcedStepsRef = useRef<Set<number>>(new Set());
   const preAnnouncedStepsRef = useRef<Set<number>>(new Set());
+  const remindedStepsRef = useRef<Set<number>>(new Set());
   const announcedPOIsRef = useRef<Set<string>>(new Set());
   const lastRerouteRef = useRef<number>(0);
 
@@ -140,6 +142,7 @@ export function useNavigation({ routePath, origin, destination, onArrival, onRer
 
     announcedStepsRef.current = new Set();
     preAnnouncedStepsRef.current = new Set();
+    remindedStepsRef.current = new Set();
     announcedPOIsRef.current = new Set();
 
     setState((s) => ({
@@ -226,6 +229,18 @@ export function useNavigation({ routePath, origin, destination, onArrival, onRer
               !preAnnouncedStepsRef.current.has(nextIdx)
             ) {
               preAnnouncedStepsRef.current.add(nextIdx);
+              const dist = Math.round(distToNext);
+              speak(`En ${dist} metros, ${prev.steps[nextIdx].plainText}`);
+            }
+
+            // Second reminder at 500m
+            if (
+              nextIdx < prev.steps.length &&
+              distToNext != null &&
+              distToNext < REMIND_THRESHOLD_METERS &&
+              !remindedStepsRef.current.has(nextIdx)
+            ) {
+              remindedStepsRef.current.add(nextIdx);
               const dist = Math.round(distToNext);
               speak(`En ${dist} metros, ${prev.steps[nextIdx].plainText}`);
             }
