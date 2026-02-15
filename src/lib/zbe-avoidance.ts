@@ -3,6 +3,7 @@ import * as turf from '@turf/turf';
 
 export interface SafePoint {
   coordinates: { lat: number; lng: number };
+  zoneId: string;
   zoneName: string;
   distanceMeters: number;
 }
@@ -66,6 +67,7 @@ export function getNearestPointOutsideZBE(
         lat: safePoint.geometry.coordinates[1],
         lng: safePoint.geometry.coordinates[0],
       },
+      zoneId: props.id,
       zoneName: props.name,
       distanceMeters: Math.round(distanceM),
     };
@@ -86,20 +88,41 @@ export function getAvoidanceWaypoints(
   const waypoints: google.maps.LatLngLiteral[] = [];
   const originPt = turf.point([origin.lng, origin.lat]);
   const destPt = turf.point([destination.lng, destination.lat]);
-  const midpoint = turf.midpoint(originPt, destPt);
+  // Use the full OD line instead of just the midpoint
+  const odLine = turf.lineString([
+    [origin.lng, origin.lat],
+    [destination.lng, destination.lat],
+  ]);
 
   for (const feature of zbeZones.features) {
     if (!blockedZoneIds.includes(feature.properties.id)) continue;
 
     const polygon = turf.polygon(feature.geometry.coordinates);
     const boundary = turf.polygonToLine(polygon);
+    const centroid = turf.centroid(polygon);
 
-    // Find the nearest point on the polygon boundary to the route midpoint
-    const nearest = turf.nearestPointOnLine(boundary as any, midpoint);
-    const nearestCoord = nearest.geometry.coordinates;
+    // Find the nearest point on the polygon boundary to the OD line
+    // Sample multiple points along the OD line and pick the closest boundary point
+    const numSamples = 10;
+    let bestDist = Infinity;
+    let bestBoundaryPt: ReturnType<typeof turf.nearestPointOnLine> | null = null;
+
+    for (let i = 0; i <= numSamples; i++) {
+      const fraction = i / numSamples;
+      const samplePt = turf.along(odLine, turf.length(odLine) * fraction);
+      const nearest = turf.nearestPointOnLine(boundary as any, samplePt);
+      const dist = turf.distance(samplePt, nearest);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestBoundaryPt = nearest;
+      }
+    }
+
+    if (!bestBoundaryPt) continue;
+
+    const nearestCoord = bestBoundaryPt.geometry.coordinates;
 
     // Push 300m outward from the polygon centroid
-    const centroid = turf.centroid(polygon);
     const bearing = turf.bearing(centroid, turf.point(nearestCoord));
     const safeWp = turf.destination(turf.point(nearestCoord), 0.3, bearing, { units: 'kilometers' });
 

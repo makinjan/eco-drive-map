@@ -9,7 +9,8 @@ export interface ValidationResult {
 
 export function validateRoute(
   routeGeometry: LineString,
-  userTag: string
+  userTag: string,
+  excludeZoneIds?: string[]
 ): ValidationResult {
   const blockedZones: ValidationResult['blockedZones'] = [];
   const routeLine = turf.lineString(routeGeometry.coordinates);
@@ -17,6 +18,9 @@ export function validateRoute(
 
   for (const feature of zbeZones.features) {
     const props = feature.properties;
+
+    // Skip excluded zones (already handled via safe points)
+    if (excludeZoneIds?.includes(props.id)) continue;
 
     // Check if zone is currently active
     if (now < props.valid_from || now > props.valid_to) continue;
