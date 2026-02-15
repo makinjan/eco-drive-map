@@ -232,8 +232,17 @@ const Index = () => {
         const altOrigin = safeOriginPoint ? safeOriginPoint.coordinates : origin.coordinates;
         const altDest = safeDestPoint ? safeDestPoint.coordinates : destination.coordinates;
 
+        // Zones handled by safe points — exclude from validation of alt route
+        const safePointZoneIds: string[] = [];
+        if (safeOriginPoint) safePointZoneIds.push(safeOriginPoint.zoneId);
+        if (safeDestPoint) safePointZoneIds.push(safeDestPoint.zoneId);
+
         // Try avoidance waypoints with iterative validation (max 3 attempts)
-        let currentWaypoints = getAvoidanceWaypoints(blockedZoneIds, altOrigin, altDest);
+        // Only generate avoidance waypoints for zones NOT handled by safe points
+        const remainingBlockedIds = blockedZoneIds.filter(id => !safePointZoneIds.includes(id));
+        let currentWaypoints = remainingBlockedIds.length > 0
+          ? getAvoidanceWaypoints(remainingBlockedIds, altOrigin, altDest)
+          : [];
         let foundValidAlt = false;
 
         for (let attempt = 0; attempt < 3; attempt++) {
@@ -254,7 +263,7 @@ const Index = () => {
             // Check all returned routes for a fully valid one
             for (const route of avoidResult.routes) {
               const info = extractRouteInfo(route);
-              const validation = validateRoute(pathToGeometry(info.path), selectedTag);
+              const validation = validateRoute(pathToGeometry(info.path), selectedTag, safePointZoneIds);
               if (validation.valid) {
                 setAltRoute(info);
                 foundValidAlt = true;
@@ -266,7 +275,7 @@ const Index = () => {
 
             // Not valid yet — add waypoints for newly blocked zones and retry
             const retryInfo = extractRouteInfo(avoidResult.routes[0]);
-            const retryValidation = validateRoute(pathToGeometry(retryInfo.path), selectedTag);
+            const retryValidation = validateRoute(pathToGeometry(retryInfo.path), selectedTag, safePointZoneIds);
             const newBlockedIds = retryValidation.blockedZones.map((z) => z.id);
             const extraWaypoints = getAvoidanceWaypoints(newBlockedIds, altOrigin, altDest);
             
