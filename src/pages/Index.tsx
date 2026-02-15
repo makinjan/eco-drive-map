@@ -232,65 +232,83 @@ const Index = () => {
         const altOrigin = safeOriginPoint ? safeOriginPoint.coordinates : origin.coordinates;
         const altDest = safeDestPoint ? safeDestPoint.coordinates : destination.coordinates;
 
-        // Try avoidance waypoints
-        const waypoints = getAvoidanceWaypoints(blockedZoneIds, altOrigin, altDest);
+        // Try avoidance waypoints with iterative validation (max 3 attempts)
+        let currentWaypoints = getAvoidanceWaypoints(blockedZoneIds, altOrigin, altDest);
+        let foundValidAlt = false;
 
-        try {
-          const avoidResult = await directionsService.route({
-            origin: altOrigin,
-            destination: altDest,
-            travelMode: google.maps.TravelMode.DRIVING,
-            waypoints: waypoints.length > 0 ? waypoints.map((wp) => ({
-              location: wp,
-              stopover: false,
-            })) : undefined,
-          });
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const avoidResult = await directionsService.route({
+              origin: altOrigin,
+              destination: altDest,
+              travelMode: google.maps.TravelMode.DRIVING,
+              waypoints: currentWaypoints.length > 0 ? currentWaypoints.map((wp) => ({
+                location: wp,
+                stopover: false,
+              })) : undefined,
+              provideRouteAlternatives: true,
+            });
 
-          if (avoidResult.routes && avoidResult.routes.length > 0) {
-            const avoidInfo = extractRouteInfo(avoidResult.routes[0]);
-            setAltRoute(avoidInfo);
+            if (!avoidResult.routes || avoidResult.routes.length === 0) break;
 
-            if (originInZBE || destInZBE) {
-              const parts: string[] = [];
-              const voiceParts: string[] = [];
-              if (originInZBE) {
-                parts.push(`origen está dentro de ${originInZBE}`);
-                voiceParts.push(`Tu punto de origen está dentro de la zona de bajas emisiones ${originInZBE}`);
+            // Check all returned routes for a fully valid one
+            for (const route of avoidResult.routes) {
+              const info = extractRouteInfo(route);
+              const validation = validateRoute(pathToGeometry(info.path), selectedTag);
+              if (validation.valid) {
+                setAltRoute(info);
+                foundValidAlt = true;
+                break;
               }
-              if (destInZBE) {
-                parts.push(`destino está dentro de ${destInZBE}`);
-                voiceParts.push(`Tu destino está dentro de la zona de bajas emisiones ${destInZBE}`);
-              }
-              toast.error(
-                `❌ Tu ${parts.join(' y tu ')}. Ruta alternativa hasta punto seguro disponible.`
-              );
-              speak('Zona restringida para tu etiqueta. Ruta alternativa hasta punto seguro disponible.');
-            } else {
-              toast.error('❌ Ruta principal bloqueada. ¡Alternativa disponible!');
-              const zoneNames = validations[0].blockedZones.map((z) => z.name).join(', ');
-              speak(`Zona restringida para tu etiqueta: ${zoneNames}. Alternativa disponible.`);
             }
-            return;
+
+            if (foundValidAlt) break;
+
+            // Not valid yet — add waypoints for newly blocked zones and retry
+            const retryInfo = extractRouteInfo(avoidResult.routes[0]);
+            const retryValidation = validateRoute(pathToGeometry(retryInfo.path), selectedTag);
+            const newBlockedIds = retryValidation.blockedZones.map((z) => z.id);
+            const extraWaypoints = getAvoidanceWaypoints(newBlockedIds, altOrigin, altDest);
+            // Merge unique waypoints
+            const wpSet = new Set(currentWaypoints.map(w => `${w.lat},${w.lng}`));
+            for (const wp of extraWaypoints) {
+              const key = `${wp.lat},${wp.lng}`;
+              if (!wpSet.has(key)) {
+                currentWaypoints.push(wp);
+                wpSet.add(key);
+              }
+            }
+            // If no new waypoints were added, stop iterating
+            if (extraWaypoints.every(wp => wpSet.has(`${wp.lat},${wp.lng}`) && currentWaypoints.length === wpSet.size)) break;
+          } catch (avoidErr) {
+            console.error('Avoidance route error (attempt ' + attempt + '):', avoidErr);
+            break;
           }
-        } catch (avoidErr) {
-          console.error('Avoidance route error:', avoidErr);
         }
 
-        // Fallback: offer any Google alt route as "best effort" even if not fully valid
-        if (result.routes.length > 1) {
-          // Pick the route with fewest blocked zones
-          let bestIdx = 1;
-          let bestBlockedCount = validations[1].blockedZones.length;
-          for (let i = 2; i < result.routes.length; i++) {
-            if (validations[i].blockedZones.length < bestBlockedCount) {
-              bestIdx = i;
-              bestBlockedCount = validations[i].blockedZones.length;
-            }
+        if (foundValidAlt) {
+          if (originInZBE || destInZBE) {
+            const parts: string[] = [];
+            if (originInZBE) parts.push(`origen está dentro de ${originInZBE}`);
+            if (destInZBE) parts.push(`destino está dentro de ${destInZBE}`);
+            toast.error(`❌ Tu ${parts.join(' y tu ')}. Ruta alternativa legal disponible.`);
+            speak('Zona restringida para tu etiqueta. Ruta alternativa completamente legal disponible.');
+          } else {
+            toast.error('❌ Ruta principal bloqueada. ¡Alternativa legal disponible!');
+            const zoneNames = validations[0].blockedZones.map((z) => z.name).join(', ');
+            speak(`Zona restringida para tu etiqueta: ${zoneNames}. Alternativa legal disponible.`);
           }
-          if (bestBlockedCount < validations[0].blockedZones.length) {
-            setAltRoute(routeInfos[bestIdx]);
-            toast.error('❌ Ruta bloqueada. Alternativa con menor exposición disponible.');
-            return;
+          return;
+        }
+
+        // Fallback: only offer a Google alt if it's fully valid
+        if (result.routes.length > 1) {
+          for (let i = 1; i < result.routes.length; i++) {
+            if (validations[i].valid) {
+              setAltRoute(routeInfos[i]);
+              toast.error('❌ Ruta principal bloqueada. ¡Alternativa legal disponible!');
+              return;
+            }
           }
         }
 
