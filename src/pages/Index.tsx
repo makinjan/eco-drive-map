@@ -323,6 +323,30 @@ const Index = () => {
           }
         }
 
+        // Final fallback: if we have safe points, offer a direct route to/from them
+        // This ensures the user ALWAYS gets an alternative when dest/origin is in a ZBE
+        if (safeOriginPoint || safeDestPoint) {
+          try {
+            const fallbackResult = await directionsService.route({
+              origin: altOrigin,
+              destination: altDest,
+              travelMode: google.maps.TravelMode.DRIVING,
+            });
+            if (fallbackResult.routes && fallbackResult.routes.length > 0) {
+              const fallbackInfo = extractRouteInfo(fallbackResult.routes[0]);
+              setAltRoute(fallbackInfo);
+              const parts: string[] = [];
+              if (destInZBE) parts.push(`destino está dentro de ${destInZBE}`);
+              if (originInZBE) parts.push(`origen está dentro de ${originInZBE}`);
+              toast.error(`❌ Tu ${parts.join(' y tu ')}. Ruta al punto más cercano fuera de la zona disponible.`);
+              speak('Zona restringida. Ruta al punto más cercano fuera de la zona disponible.');
+              return;
+            }
+          } catch (fallbackErr) {
+            console.error('Fallback route error:', fallbackErr);
+          }
+        }
+
         const allZoneNames = validations[0].blockedZones.map((z) => z.name).join(', ');
         toast.error(
           `❌ Ruta bloqueada: ${allZoneNames}. No se encontró alternativa válida.`
