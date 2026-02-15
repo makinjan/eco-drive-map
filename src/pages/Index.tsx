@@ -419,8 +419,27 @@ const Index = () => {
     nav.startNavigation();
   }, [nav.startNavigation]);
 
-  const handleOriginClear = useCallback(() => setOrigin(null), []);
-  const handleDestClear = useCallback(() => setDestination(null), []);
+  const resetRouteState = useCallback(() => {
+    setRouteStatus('idle');
+    setRoutePath([]);
+    setRouteDuration(null);
+    setRouteDistance(null);
+    setValidationResult(null);
+    setAltRoute(null);
+    setSafeOrigin(null);
+    setSafeDest(null);
+    setRoutePOIs([]);
+  }, []);
+
+  const handleOriginClear = useCallback(() => {
+    setOrigin(null);
+    resetRouteState();
+  }, [resetRouteState]);
+
+  const handleDestClear = useCallback(() => {
+    setDestination(null);
+    resetRouteState();
+  }, [resetRouteState]);
 
   // Reverse geocode coordinates to street address
   const geocodeReverse = useCallback(async (coords: { lat: number; lng: number }): Promise<string> => {
