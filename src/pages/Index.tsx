@@ -50,6 +50,7 @@ const Index = () => {
   const [altRoute, setAltRoute] = useState<RouteInfo | null>(null);
   const [safeOrigin, setSafeOrigin] = useState<SafePoint | null>(null);
   const [safeDest, setSafeDest] = useState<SafePoint | null>(null);
+  const skipRecalcRef = useRef(false);
   const [routePOIs, setRoutePOIs] = useState<RoutePOI[]>([]);
 
   const { nearbyZones, error: proximityError } = useZBEProximity({
@@ -362,6 +363,7 @@ const Index = () => {
 
   const handleUseAltRoute = useCallback(async () => {
     if (!altRoute) return;
+    skipRecalcRef.current = true;
     setRoutePath(altRoute.path);
     setRouteDuration(altRoute.durationInTraffic ?? altRoute.duration);
     setRouteDistance(altRoute.distance);
@@ -482,6 +484,10 @@ const Index = () => {
   // Auto-calculate when destination is set (or voice command)
   useEffect(() => {
     if (origin && destination) {
+      if (skipRecalcRef.current) {
+        skipRecalcRef.current = false;
+        return;
+      }
       calculateRoute();
     }
   }, [origin, destination, calculateRoute]);
