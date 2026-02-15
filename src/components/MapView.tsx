@@ -1,5 +1,5 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
-import { GoogleMap, Polygon, Marker, Polyline, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, Polygon, Marker, Polyline, InfoWindow, TrafficLayer } from '@react-google-maps/api';
 import { SPAIN_CENTER, INITIAL_ZOOM, MAP_OPTIONS } from '@/lib/google-maps-config';
 import { zbeZones, type ZBEProperties } from '@/data/zbe-zones';
 
@@ -20,9 +20,10 @@ interface MapViewProps {
   userPosition?: { lat: number; lng: number } | null;
   heading?: number | null;
   pois?: RoutePOI[];
+  showTraffic?: boolean;
 }
 
-const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, isNavigating, userPosition, heading, pois = [] }: MapViewProps) => {
+const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, isNavigating, userPosition, heading, pois = [], showTraffic = true }: MapViewProps) => {
   const mapRef = useRef<google.maps.Map | null>(null);
   const [selectedZone, setSelectedZone] = useState<{
     position: google.maps.LatLngLiteral;
@@ -92,6 +93,9 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
       options={MAP_OPTIONS}
       onLoad={onLoad}
     >
+      {/* Traffic layer */}
+      {showTraffic && <TrafficLayer />}
+
       {/* ZBE Zones */}
       {zbeZones.features.map((feature) => {
         const coords = feature.geometry.coordinates[0].map(([lng, lat]) => ({ lat, lng }));
