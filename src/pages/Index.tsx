@@ -64,7 +64,21 @@ const Index = () => {
   });
 
   const extractRouteInfo = (route: google.maps.DirectionsRoute): RouteInfo => {
-    const path = route.overview_path!.map((p) => ({ lat: p.lat(), lng: p.lng() }));
+    // Use detailed path from steps instead of simplified overview_path
+    const detailedPath: { lat: number; lng: number }[] = [];
+    for (const leg of route.legs!) {
+      for (const step of leg.steps!) {
+        if (step.path) {
+          for (const point of step.path) {
+            detailedPath.push({ lat: point.lat(), lng: point.lng() });
+          }
+        }
+      }
+    }
+    // Fallback to overview_path if steps don't have path data
+    const path = detailedPath.length > 0
+      ? detailedPath
+      : route.overview_path!.map((p) => ({ lat: p.lat(), lng: p.lng() }));
     const leg = route.legs![0];
     return {
       path,
