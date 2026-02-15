@@ -105,15 +105,36 @@ const RouteServices = ({ routePath, isVisible, onAddToRoute }: RouteServicesProp
 
       const service = new google.maps.places.PlacesService(document.createElement('div'));
 
-      const results = await new Promise<google.maps.places.PlaceResult[]>((resolve) => {
+      const keyword = type === 'gas_station' ? 'gasolinera' : 'restaurante';
+
+      // Try with type first, then fallback to keyword search
+      const searchWithType = () => new Promise<google.maps.places.PlaceResult[]>((resolve) => {
         service.nearbySearch(
           { location: userPos, radius: 20000, type },
           (res, status) => {
+            console.log('Places search (type) status:', status, 'results:', res?.length ?? 0);
+            if (status === google.maps.places.PlacesServiceStatus.OK && res && res.length > 0) resolve(res);
+            else resolve([]);
+          }
+        );
+      });
+
+      const searchWithKeyword = () => new Promise<google.maps.places.PlaceResult[]>((resolve) => {
+        service.nearbySearch(
+          { location: userPos, radius: 20000, keyword },
+          (res, status) => {
+            console.log('Places search (keyword) status:', status, 'results:', res?.length ?? 0);
             if (status === google.maps.places.PlacesServiceStatus.OK && res) resolve(res);
             else resolve([]);
           }
         );
       });
+
+      let results = await searchWithType();
+      if (results.length === 0) {
+        console.log('No results with type, trying keyword:', keyword);
+        results = await searchWithKeyword();
+      }
 
       let best: NearestPOI | null = null;
 
