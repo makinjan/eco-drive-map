@@ -45,27 +45,38 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
     mapRef.current.fitBounds(bounds, 100);
   }, [routePath, origin, destination, altRoutePath, isNavigating]);
 
-  // Zoom in when navigation starts
+  // Zoom in when navigation starts / reset when it stops
   const prevNavigating = useRef(false);
   useEffect(() => {
     if (!mapRef.current) return;
     if (isNavigating && !prevNavigating.current) {
-      // Just started navigating — zoom in
+      // Just started navigating — zoom in with tilt
       mapRef.current.setZoom(17);
+      mapRef.current.setTilt(45);
       if (userPosition) mapRef.current.panTo(userPosition);
       else if (origin) mapRef.current.panTo(origin);
+    }
+    if (!isNavigating && prevNavigating.current) {
+      // Navigation stopped — reset rotation and tilt
+      mapRef.current.setHeading(0);
+      mapRef.current.setTilt(0);
     }
     prevNavigating.current = !!isNavigating;
   }, [isNavigating]);
 
-  // Center on user during navigation
+  // Center on user and rotate map during navigation
   useEffect(() => {
     if (!mapRef.current || !isNavigating || !userPosition) return;
     mapRef.current.panTo(userPosition);
     if (mapRef.current.getZoom()! < 16) {
       mapRef.current.setZoom(17);
     }
-  }, [isNavigating, userPosition]);
+    // Rotate map to match heading
+    if (heading != null) {
+      mapRef.current.setHeading(heading);
+      mapRef.current.setTilt(45);
+    }
+  }, [isNavigating, userPosition, heading]);
 
   const routeColor =
     isNavigating ? '#4285f4' :
