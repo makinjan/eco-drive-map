@@ -95,8 +95,7 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
       options={MAP_OPTIONS}
       onLoad={onLoad}
     >
-      {/* Traffic layer */}
-      {showTraffic && <TrafficLayer />}
+      {/* Traffic layer removed — route calculation still uses traffic data */}
 
       {/* ZBE Zones */}
       {zbeZones.features.map((feature) => {
