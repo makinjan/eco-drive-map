@@ -245,7 +245,7 @@ const Index = () => {
           : [];
         let foundValidAlt = false;
 
-        for (let attempt = 0; attempt < 3; attempt++) {
+        for (let attempt = 0; attempt < 5; attempt++) {
           try {
             const avoidResult = await directionsService.route({
               origin: altOrigin,
