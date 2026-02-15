@@ -336,7 +336,7 @@ const Index = () => {
     }
   }, [nav.userPosition, destination]);
 
-  useWakeLock(nav.isNavigating);
+  useWakeLock(true);
 
   const handleStartNavigation = useCallback(() => {
     nav.startNavigation();
