@@ -3,10 +3,12 @@ import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, Chev
 import ThemeToggle from './ThemeToggle';
 import ProximityAlertBanner from './ProximityAlertBanner';
 import RouteServices from './RouteServices';
+import HistoryFavoritesPanel from './HistoryFavoritesPanel';
 import { Button } from '@/components/ui/button';
 import TagSelector from './TagSelector';
 import SearchInput, { type PlaceResult } from './SearchInput';
 import type { ValidationResult } from '@/lib/route-validator';
+import type { SavedPlace, RouteHistoryEntry } from '@/hooks/use-route-history';
 
 interface RouteInfo {
   path: { lat: number; lng: number }[];
@@ -51,6 +53,12 @@ interface MobilePanelProps {
   originName?: string;
   destName?: string;
   routePath: { lat: number; lng: number }[];
+  history: RouteHistoryEntry[];
+  favorites: SavedPlace[];
+  onAddFavorite: (place: SavedPlace) => void;
+  onRemoveFavorite: (name: string) => void;
+  isFavorite: (name: string) => boolean;
+  onClearHistory: () => void;
 }
 
 const MobilePanel = ({
@@ -79,6 +87,12 @@ const MobilePanel = ({
   originName,
   destName,
   routePath,
+  history,
+  favorites,
+  onAddFavorite,
+  onRemoveFavorite,
+  isFavorite,
+  onClearHistory,
 }: MobilePanelProps) => {
   const [expanded, setExpanded] = useState(true);
 
@@ -146,6 +160,20 @@ const MobilePanel = ({
               {isVoiceListening ? <MicOff className="h-4.5 w-4.5" /> : <Mic className="h-4.5 w-4.5" />}
               {isVoiceListening ? 'Escuchando...' : 'Comando de voz'}
             </Button>
+
+            {/* History & Favorites */}
+            {routeStatus === 'idle' && (
+              <HistoryFavoritesPanel
+                history={history}
+                favorites={favorites}
+                onSelectRoute={(o, d) => { onOriginSelect(o); onDestinationSelect(d); }}
+                onSelectDestination={(d) => onDestinationSelect(d)}
+                onAddFavorite={onAddFavorite}
+                onRemoveFavorite={onRemoveFavorite}
+                isFavorite={isFavorite}
+                onClearHistory={onClearHistory}
+              />
+            )}
 
             {/* Route result */}
             {routeStatus !== 'idle' && routeStatus !== 'loading' && (
