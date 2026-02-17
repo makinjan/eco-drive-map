@@ -5,6 +5,7 @@ import ProximityAlertBanner from './ProximityAlertBanner';
 import HistoryFavoritesPanel from './HistoryFavoritesPanel';
 import WaypointInputs from './WaypointInputs';
 import TripCostEstimator from './TripCostEstimator';
+import SuggestionBox from './SuggestionBox';
 import { Button } from '@/components/ui/button';
 import TagSelector from './TagSelector';
 import SearchInput, { type PlaceResult } from './SearchInput';
@@ -437,6 +438,12 @@ const Sidebar = ({
               ZBEDEP / ZBEES — Especial Protección
             </div>
           </div>
+        </div>
+
+        {/* Suggestion box */}
+        <div className="mx-5 h-px bg-border/60" />
+        <div className="px-5 py-3">
+          <SuggestionBox />
         </div>
       </div>
     </div>
