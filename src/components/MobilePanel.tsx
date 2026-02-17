@@ -4,6 +4,7 @@ import ThemeToggle from './ThemeToggle';
 import ProximityAlertBanner from './ProximityAlertBanner';
 import RouteServices from './RouteServices';
 import HistoryFavoritesPanel from './HistoryFavoritesPanel';
+import WaypointInputs from './WaypointInputs';
 import { Button } from '@/components/ui/button';
 import TagSelector from './TagSelector';
 import SearchInput, { type PlaceResult } from './SearchInput';
@@ -59,6 +60,12 @@ interface MobilePanelProps {
   onRemoveFavorite: (name: string) => void;
   isFavorite: (name: string) => boolean;
   onClearHistory: () => void;
+  waypoints: (PlaceResult | null)[];
+  onAddWaypoint: () => void;
+  onRemoveWaypoint: (index: number) => void;
+  onWaypointSelect: (index: number, place: PlaceResult) => void;
+  onWaypointClear: (index: number) => void;
+  waypointNames: (string | undefined)[];
 }
 
 const MobilePanel = ({
@@ -93,6 +100,12 @@ const MobilePanel = ({
   onRemoveFavorite,
   isFavorite,
   onClearHistory,
+  waypoints,
+  onAddWaypoint,
+  onRemoveWaypoint,
+  onWaypointSelect,
+  onWaypointClear,
+  waypointNames,
 }: MobilePanelProps) => {
   const [expanded, setExpanded] = useState(true);
 
@@ -142,6 +155,16 @@ const MobilePanel = ({
 
             <SearchInput placeholder="Origen" onSelect={onOriginSelect} onClear={onOriginClear} icon="origin" autoGeolocate externalValue={originName} />
             <SearchInput placeholder="Destino" onSelect={onDestinationSelect} onClear={onDestinationClear} icon="destination" externalValue={destName} />
+
+            {/* Waypoint inputs */}
+            <WaypointInputs
+              waypoints={waypoints}
+              onAddWaypoint={onAddWaypoint}
+              onRemoveWaypoint={onRemoveWaypoint}
+              onWaypointSelect={onWaypointSelect}
+              onWaypointClear={onWaypointClear}
+              waypointNames={waypointNames}
+            />
 
             {routeStatus === 'loading' && (
               <div className="flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground">
