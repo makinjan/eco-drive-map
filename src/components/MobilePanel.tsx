@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route, ParkingCircle, MapPin, Mic, MicOff, Car } from 'lucide-react';
+import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route, ParkingCircle, MapPin, Mic, MicOff, Car, Share2 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import ProximityAlertBanner from './ProximityAlertBanner';
 import RouteServices from './RouteServices';
 import HistoryFavoritesPanel from './HistoryFavoritesPanel';
 import WaypointInputs from './WaypointInputs';
+import TripCostEstimator from './TripCostEstimator';
 import { Button } from '@/components/ui/button';
 import TagSelector from './TagSelector';
 import SearchInput, { type PlaceResult } from './SearchInput';
@@ -68,6 +69,7 @@ interface MobilePanelProps {
   onWaypointClear: (index: number) => void;
   waypointNames: (string | undefined)[];
   zbeParkings: RoutePOI[];
+  onShareRoute: () => void;
 }
 
 const MobilePanel = ({
@@ -109,6 +111,7 @@ const MobilePanel = ({
   onWaypointClear,
   waypointNames,
   zbeParkings,
+  onShareRoute,
 }: MobilePanelProps) => {
   const [expanded, setExpanded] = useState(true);
 
@@ -216,15 +219,26 @@ const MobilePanel = ({
                         <span>📍 {formatDistance(routeDistance)}</span>
                       </div>
                     )}
-                    <Button
-                      onClick={onStartNavigation}
-                      variant="default"
-                      size="sm"
-                      className="w-full rounded-lg font-semibold mt-1"
-                    >
-                      <Navigation className="mr-2 h-3.5 w-3.5" />
-                      Iniciar ruta
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={onStartNavigation}
+                        variant="default"
+                        size="sm"
+                        className="flex-1 rounded-lg font-semibold mt-1"
+                      >
+                        <Navigation className="mr-2 h-3.5 w-3.5" />
+                        Iniciar ruta
+                      </Button>
+                      <Button
+                        onClick={onShareRoute}
+                        variant="outline"
+                        size="sm"
+                        className="rounded-lg mt-1"
+                        title="Compartir ruta"
+                      >
+                        <Share2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 )}
 
@@ -340,6 +354,11 @@ const MobilePanel = ({
                       ))}
                     </div>
                   </div>
+                )}
+
+                {/* Trip cost estimator */}
+                {(routeStatus === 'valid' || routeStatus === 'invalid') && routeDistance != null && (
+                  <TripCostEstimator distanceMeters={routeDistance} />
                 )}
 
                 {routeStatus === 'no-route' && (

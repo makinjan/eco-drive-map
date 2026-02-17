@@ -19,6 +19,7 @@ import type { ValidationResult } from '@/lib/route-validator';
 import type { PlaceResult } from '@/components/SearchInput';
 import { toast } from 'sonner';
 import { speak } from '@/lib/speak';
+import { shareRoute, parseShareURL } from '@/lib/share-route';
 import { useRouteHistory, useFavorites } from '@/hooks/use-route-history';
 
 type RouteStatus = 'idle' | 'loading' | 'valid' | 'invalid' | 'no-route';
@@ -488,6 +489,35 @@ const Index = () => {
   const { history, addToHistory, clearHistory } = useRouteHistory();
   const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites();
 
+  const handleShareRoute = useCallback(() => {
+    shareRoute({
+      originName: origin?.name,
+      originLat: origin?.coordinates.lat,
+      originLng: origin?.coordinates.lng,
+      destName: destination?.name,
+      destLat: destination?.coordinates.lat,
+      destLng: destination?.coordinates.lng,
+      tag: selectedTag,
+      waypointNames: waypoints.filter(Boolean).map((wp) => wp!.name),
+      waypointCoords: waypoints.filter(Boolean).map((wp) => wp!.coordinates),
+    });
+  }, [origin, destination, selectedTag, waypoints]);
+
+  // Parse shared URL on mount
+  useEffect(() => {
+    const shared = parseShareURL();
+    if (!shared) return;
+    if (shared.tag) handleTagChange(shared.tag);
+    if (shared.originName && shared.originCoords) {
+      setOrigin({ name: shared.originName, coordinates: shared.originCoords });
+    }
+    if (shared.destName && shared.destCoords) {
+      setDestination({ name: shared.destName, coordinates: shared.destCoords });
+    }
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
+  }, []);
+
   const isMobile = useIsMobile();
 
   const handleArrival = useCallback(() => {
@@ -691,6 +721,7 @@ const Index = () => {
     onWaypointClear: handleWaypointClear,
     waypointNames: waypoints.map((wp) => wp?.name),
     zbeParkings,
+    onShareRoute: handleShareRoute,
   };
 
   return (
