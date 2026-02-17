@@ -6,6 +6,7 @@ import RouteServices from './RouteServices';
 import HistoryFavoritesPanel from './HistoryFavoritesPanel';
 import WaypointInputs from './WaypointInputs';
 import TripCostEstimator from './TripCostEstimator';
+import SuggestionBox from './SuggestionBox';
 import { Button } from '@/components/ui/button';
 import TagSelector from './TagSelector';
 import SearchInput, { type PlaceResult } from './SearchInput';
@@ -382,6 +383,11 @@ const MobilePanel = ({
               nearbyZones={nearbyZones}
               error={proximityError}
             />
+
+            {/* Suggestion box */}
+            <div className="pt-2">
+              <SuggestionBox />
+            </div>
           </div>
         )}
       </div>
