@@ -44,6 +44,7 @@ const Index = () => {
   }, []);
   const [origin, setOrigin] = useState<PlaceResult | null>(null);
   const [destination, setDestination] = useState<PlaceResult | null>(null);
+  const [waypoints, setWaypoints] = useState<(PlaceResult | null)[]>([]);
   const [routePath, setRoutePath] = useState<{ lat: number; lng: number }[]>([]);
   const [routeStatus, setRouteStatus] = useState<RouteStatus>('idle');
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
@@ -90,12 +91,25 @@ const Index = () => {
     const path = detailedPath.length > 0
       ? detailedPath
       : route.overview_path!.map((p) => ({ lat: p.lat(), lng: p.lng() }));
-    const leg = route.legs![0];
+    // Sum duration and distance across all legs (supports multi-waypoint routes)
+    let totalDuration = 0;
+    let totalDurationInTraffic = 0;
+    let totalDistance = 0;
+    let hasTraffic = false;
+    for (const leg of route.legs!) {
+      totalDuration += leg.duration?.value ?? 0;
+      totalDistance += leg.distance?.value ?? 0;
+      const trafficVal = (leg as any).duration_in_traffic?.value;
+      if (trafficVal) {
+        totalDurationInTraffic += trafficVal;
+        hasTraffic = true;
+      }
+    }
     return {
       path,
-      duration: leg.duration?.value ?? null,
-      durationInTraffic: (leg as any).duration_in_traffic?.value ?? null,
-      distance: leg.distance?.value ?? null,
+      duration: totalDuration || null,
+      durationInTraffic: hasTraffic ? totalDurationInTraffic : null,
+      distance: totalDistance || null,
     };
   };
 
@@ -172,12 +186,22 @@ const Index = () => {
     try {
       const directionsService = new google.maps.DirectionsService();
 
+      // Build user waypoints (intermediate stops)
+      const userWaypoints: google.maps.DirectionsWaypoint[] = waypoints
+        .filter((wp): wp is PlaceResult => wp !== null)
+        .map((wp) => ({
+          location: wp.coordinates,
+          stopover: true,
+        }));
+
       // Request with alternatives
       const result = await directionsService.route({
         origin: origin.coordinates,
         destination: destination.coordinates,
         travelMode: google.maps.TravelMode.DRIVING,
-        provideRouteAlternatives: true,
+        provideRouteAlternatives: userWaypoints.length === 0, // Google doesn't support alternatives with waypoints
+        waypoints: userWaypoints.length > 0 ? userWaypoints : undefined,
+        optimizeWaypoints: userWaypoints.length > 1,
         drivingOptions: {
           departureTime: new Date(),
           trafficModel: google.maps.TrafficModel.BEST_GUESS,
@@ -384,7 +408,7 @@ const Index = () => {
       setRouteStatus('no-route');
       toast.error('Error al calcular la ruta.');
     }
-  }, [origin, destination, selectedTag]);
+  }, [origin, destination, selectedTag, waypoints]);
 
   const handleUseAltRoute = useCallback(async () => {
     if (!altRoute) return;
@@ -466,6 +490,31 @@ const Index = () => {
     setDestination(null);
     resetRouteState();
   }, [resetRouteState]);
+
+  // Waypoint handlers
+  const handleAddWaypoint = useCallback(() => {
+    setWaypoints((prev) => [...prev, null]);
+  }, []);
+
+  const handleRemoveWaypoint = useCallback((index: number) => {
+    setWaypoints((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleWaypointSelect = useCallback((index: number, place: PlaceResult) => {
+    setWaypoints((prev) => {
+      const updated = [...prev];
+      updated[index] = place;
+      return updated;
+    });
+  }, []);
+
+  const handleWaypointClear = useCallback((index: number) => {
+    setWaypoints((prev) => {
+      const updated = [...prev];
+      updated[index] = null;
+      return updated;
+    });
+  }, []);
 
   // Reverse geocode coordinates to street address
   const geocodeReverse = useCallback(async (coords: { lat: number; lng: number }): Promise<string> => {
@@ -585,6 +634,12 @@ const Index = () => {
     onRemoveFavorite: removeFavorite,
     isFavorite,
     onClearHistory: clearHistory,
+    waypoints,
+    onAddWaypoint: handleAddWaypoint,
+    onRemoveWaypoint: handleRemoveWaypoint,
+    onWaypointSelect: handleWaypointSelect,
+    onWaypointClear: handleWaypointClear,
+    waypointNames: waypoints.map((wp) => wp?.name),
   };
 
   return (
