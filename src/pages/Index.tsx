@@ -56,6 +56,7 @@ const Index = () => {
   const [safeDest, setSafeDest] = useState<SafePoint | null>(null);
   const skipRecalcRef = useRef(false);
   const [routePOIs, setRoutePOIs] = useState<RoutePOI[]>([]);
+  const [zbeParkings, setZbeParkings] = useState<RoutePOI[]>([]);
   const [nearbyRadar, setNearbyRadar] = useState<{ radar: RadarPoint; distance: number } | null>(null);
   const radarBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -173,6 +174,48 @@ const Index = () => {
     }
   }, []);
 
+  const searchParkingsNearZBE = useCallback(async (points: { lat: number; lng: number }[]) => {
+    if (points.length === 0) return;
+    try {
+      const service = new google.maps.places.PlacesService(document.createElement('div'));
+      const allParkings: RoutePOI[] = [];
+
+      const searchAtPoint = (point: { lat: number; lng: number }): Promise<RoutePOI[]> => {
+        return new Promise((resolve) => {
+          service.nearbySearch(
+            { location: point, radius: 2000, type: 'parking' },
+            (results, status) => {
+              if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+                resolve(results.slice(0, 5).map((r) => ({
+                  id: r.place_id || `parking-${r.geometry!.location!.lat()}-${r.geometry!.location!.lng()}`,
+                  name: r.name || 'Parking',
+                  position: {
+                    lat: r.geometry!.location!.lat(),
+                    lng: r.geometry!.location!.lng(),
+                  },
+                  type: 'parking' as const,
+                  vicinity: r.vicinity || undefined,
+                })));
+              } else {
+                resolve([]);
+              }
+            }
+          );
+        });
+      };
+
+      for (const pt of points) {
+        const results = await searchAtPoint(pt);
+        allParkings.push(...results);
+      }
+
+      const unique = Array.from(new Map(allParkings.map((p) => [p.id, p])).values());
+      setZbeParkings(unique);
+    } catch (err) {
+      console.error('Parking search error:', err);
+    }
+  }, []);
+
   const calculateRoute = useCallback(async () => {
     if (!origin || !destination) return;
 
@@ -277,6 +320,12 @@ const Index = () => {
 
         if (safeOriginPoint) setSafeOrigin(safeOriginPoint);
         if (safeDestPoint) setSafeDest(safeDestPoint);
+
+        // Search for parking near safe points outside the ZBE
+        const parkingSearchPoints: { lat: number; lng: number }[] = [];
+        if (safeOriginPoint) parkingSearchPoints.push(safeOriginPoint.coordinates);
+        if (safeDestPoint) parkingSearchPoints.push(safeDestPoint.coordinates);
+        if (parkingSearchPoints.length > 0) searchParkingsNearZBE(parkingSearchPoints);
 
         // Use safe points as actual origin/destination for the avoidance route
         const altOrigin = safeOriginPoint ? safeOriginPoint.coordinates : origin.coordinates;
@@ -479,6 +528,7 @@ const Index = () => {
     setSafeOrigin(null);
     setSafeDest(null);
     setRoutePOIs([]);
+    setZbeParkings([]);
   }, []);
 
   const handleOriginClear = useCallback(() => {
@@ -640,6 +690,7 @@ const Index = () => {
     onWaypointSelect: handleWaypointSelect,
     onWaypointClear: handleWaypointClear,
     waypointNames: waypoints.map((wp) => wp?.name),
+    zbeParkings,
   };
 
   return (
@@ -663,7 +714,7 @@ const Index = () => {
             isNavigating={nav.isNavigating}
             userPosition={nav.userPosition}
             heading={nav.heading}
-            pois={routePOIs}
+            pois={[...routePOIs, ...zbeParkings]}
           />
         {nav.isNavigating && (
           <>
