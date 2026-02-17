@@ -9,7 +9,8 @@ export interface RoutePOI {
   id: string;
   name: string;
   position: { lat: number; lng: number };
-  type: 'gas_station' | 'rest_stop';
+  type: 'gas_station' | 'rest_stop' | 'parking';
+  vicinity?: string;
 }
 
 interface MapViewProps {
@@ -263,20 +264,22 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
         />
       )}
 
-      {/* POIs: gas stations & service areas */}
+      {/* POIs: gas stations, service areas & parking */}
       {pois.map((poi) => (
         <Marker
           key={poi.id}
           position={poi.position}
           icon={{
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 6,
-            fillColor: poi.type === 'gas_station' ? '#f59e0b' : '#06b6d4',
+            path: poi.type === 'parking'
+              ? 'M -5,-7 L 5,-7 L 5,7 L -5,7 Z'
+              : google.maps.SymbolPath.CIRCLE,
+            scale: poi.type === 'parking' ? 1.2 : 6,
+            fillColor: poi.type === 'gas_station' ? '#f59e0b' : poi.type === 'parking' ? '#3b82f6' : '#06b6d4',
             fillOpacity: 0.9,
             strokeColor: '#fff',
             strokeWeight: 2,
           }}
-          title={poi.name}
+          title={poi.name + (poi.vicinity ? ` — ${poi.vicinity}` : '')}
         />
       ))}
 

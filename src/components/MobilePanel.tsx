@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route, ParkingCircle, MapPin, Mic, MicOff } from 'lucide-react';
+import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route, ParkingCircle, MapPin, Mic, MicOff, Car } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import ProximityAlertBanner from './ProximityAlertBanner';
 import RouteServices from './RouteServices';
@@ -10,6 +10,7 @@ import TagSelector from './TagSelector';
 import SearchInput, { type PlaceResult } from './SearchInput';
 import type { ValidationResult } from '@/lib/route-validator';
 import type { SavedPlace, RouteHistoryEntry } from '@/hooks/use-route-history';
+import type { RoutePOI } from './MapView';
 
 interface RouteInfo {
   path: { lat: number; lng: number }[];
@@ -66,6 +67,7 @@ interface MobilePanelProps {
   onWaypointSelect: (index: number, place: PlaceResult) => void;
   onWaypointClear: (index: number) => void;
   waypointNames: (string | undefined)[];
+  zbeParkings: RoutePOI[];
 }
 
 const MobilePanel = ({
@@ -106,6 +108,7 @@ const MobilePanel = ({
   onWaypointSelect,
   onWaypointClear,
   waypointNames,
+  zbeParkings,
 }: MobilePanelProps) => {
   const [expanded, setExpanded] = useState(true);
 
@@ -307,6 +310,35 @@ const MobilePanel = ({
                           </a>
                         </div>
                       ))}
+                  </div>
+                )}
+
+                {/* Parking near ZBE */}
+                {routeStatus === 'invalid' && zbeParkings.length > 0 && (
+                  <div className="rounded-xl bg-primary/6 border border-primary/15 p-3.5 space-y-2.5">
+                    <div className="flex items-center gap-2 text-primary font-semibold text-sm">
+                      <Car className="h-4.5 w-4.5" />
+                      Parkings fuera de la ZBE
+                    </div>
+                    <div className="space-y-1.5">
+                      {zbeParkings.slice(0, 5).map((p) => (
+                        <a
+                          key={p.id}
+                          href={`https://www.google.com/maps/search/?api=1&query=${p.position.lat},${p.position.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-start gap-2 text-xs bg-primary/5 rounded-lg p-2 hover:bg-primary/10 transition-colors"
+                        >
+                          <ParkingCircle className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                          <div className="min-w-0">
+                            <span className="font-medium text-foreground block truncate">{p.name}</span>
+                            {p.vicinity && (
+                              <span className="text-muted-foreground block truncate">{p.vicinity}</span>
+                            )}
+                          </div>
+                        </a>
+                      ))}
+                    </div>
                   </div>
                 )}
 
