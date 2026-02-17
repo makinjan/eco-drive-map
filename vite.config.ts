@@ -22,6 +22,75 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        runtimeCaching: [
+          {
+            // Cache Google Maps tiles for offline use in tunnels/poor coverage
+            urlPattern: /^https:\/\/maps\.googleapis\.com\/maps\/vt/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "google-maps-tiles",
+              expiration: {
+                maxEntries: 500,
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Cache Google Maps JS API and static resources
+            urlPattern: /^https:\/\/maps\.googleapis\.com\/maps\/api/,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "google-maps-api",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24, // 1 day
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Cache Google Maps static assets (fonts, icons, sprites)
+            urlPattern: /^https:\/\/maps\.(googleapis|gstatic)\.com\//,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "google-maps-static",
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Cache Directions API responses (routes) for brief offline periods
+            urlPattern: /^https:\/\/maps\.googleapis\.com\/maps\/api\/directions/,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "google-directions-cache",
+              expiration: {
+                maxEntries: 30,
+                maxAgeSeconds: 60 * 60, // 1 hour
+              },
+              cacheableResponse: { statuses: [0, 200] },
+              networkTimeoutSeconds: 5,
+            },
+          },
+          {
+            // Cache Geocoding & Places API
+            urlPattern: /^https:\/\/maps\.googleapis\.com\/maps\/api\/(geocode|place)/,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "google-places-cache",
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24, // 1 day
+              },
+              cacheableResponse: { statuses: [0, 200] },
+              networkTimeoutSeconds: 5,
+            },
+          },
+        ],
       },
       manifest: {
         name: "ZBE Navigator — Rutas legales",
