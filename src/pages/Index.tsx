@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import type { RadarPoint } from '@/data/radares-spain';
 import { useZBEProximity } from '@/hooks/use-zbe-proximity';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { useNavigation } from '@/hooks/use-navigation';
@@ -52,6 +53,14 @@ const Index = () => {
   const [safeDest, setSafeDest] = useState<SafePoint | null>(null);
   const skipRecalcRef = useRef(false);
   const [routePOIs, setRoutePOIs] = useState<RoutePOI[]>([]);
+  const [nearbyRadar, setNearbyRadar] = useState<{ radar: RadarPoint; distance: number } | null>(null);
+  const radarBannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleRadarNearby = useCallback((radar: RadarPoint, distance: number) => {
+    setNearbyRadar({ radar, distance });
+    if (radarBannerTimerRef.current) clearTimeout(radarBannerTimerRef.current);
+    radarBannerTimerRef.current = setTimeout(() => setNearbyRadar(null), 15000);
+  }, []);
 
   const { nearbyZones, error: proximityError } = useZBEProximity({
     userTag: selectedTag,
@@ -419,6 +428,7 @@ const Index = () => {
     onArrival: handleArrival,
     onReroute: () => rerouteRef.current?.(),
     pois: routePOIs,
+    onRadarNearby: handleRadarNearby,
   });
 
   rerouteRef.current = useCallback(() => {
@@ -608,6 +618,7 @@ const Index = () => {
               destName={destination?.name}
               routePath={routePath}
               routeStatus={routeStatus}
+              nearbyRadar={nearbyRadar}
             />
           </>
         )}
