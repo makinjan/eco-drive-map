@@ -1,9 +1,10 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
-import { GoogleMap, Polygon, Marker, Polyline, InfoWindow, TrafficLayer } from '@react-google-maps/api';
+import { GoogleMap, Polygon, Marker, Polyline, InfoWindow } from '@react-google-maps/api';
 import { SPAIN_CENTER, INITIAL_ZOOM, MAP_OPTIONS } from '@/lib/google-maps-config';
 import { zbeZones, type ZBEProperties } from '@/data/zbe-zones';
 import { radaresSpain } from '@/data/radares-spain';
 import * as turf from '@turf/turf';
+import { Map, Satellite } from 'lucide-react';
 
 export interface RoutePOI {
   id: string;
@@ -26,6 +27,9 @@ interface MapViewProps {
   showTraffic?: boolean;
 }
 
+const ANIMATION_STEP_MS = 8;
+const POINTS_PER_FRAME = 15;
+
 const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, isNavigating, userPosition, heading, pois = [], showTraffic = true }: MapViewProps) => {
   const mapRef = useRef<google.maps.Map | null>(null);
   const [selectedZone, setSelectedZone] = useState<{
@@ -33,14 +37,90 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
     props: ZBEProperties;
   } | null>(null);
 
+  // Satellite toggle
+  const [isSatellite, setIsSatellite] = useState(false);
+
+  // Animated route state
+  const [animatedPath, setAnimatedPath] = useState<{ lat: number; lng: number }[]>([]);
+  const [animatedAltPath, setAnimatedAltPath] = useState<{ lat: number; lng: number }[]>([]);
+  const animFrameRef = useRef<number | null>(null);
+  const prevRouteRef = useRef<string>('');
+
   const onLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
   }, []);
 
+  // Toggle map type
+  useEffect(() => {
+    if (!mapRef.current) return;
+    mapRef.current.setMapTypeId(isSatellite ? 'hybrid' : 'roadmap');
+  }, [isSatellite]);
+
+  // Animate route drawing
+  useEffect(() => {
+    if (routePath.length === 0) {
+      setAnimatedPath([]);
+      prevRouteRef.current = '';
+      return;
+    }
+
+    const routeKey = `${routePath[0]?.lat},${routePath[0]?.lng}-${routePath[routePath.length - 1]?.lat}`;
+    if (routeKey === prevRouteRef.current) {
+      // Same route, skip animation
+      setAnimatedPath(routePath);
+      return;
+    }
+    prevRouteRef.current = routeKey;
+
+    // Cancel previous animation
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+
+    let currentIndex = 0;
+    setAnimatedPath([]);
+
+    const animate = () => {
+      currentIndex = Math.min(currentIndex + POINTS_PER_FRAME, routePath.length);
+      setAnimatedPath(routePath.slice(0, currentIndex));
+
+      if (currentIndex < routePath.length) {
+        animFrameRef.current = requestAnimationFrame(animate);
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [routePath]);
+
+  // Animate alt route
+  useEffect(() => {
+    if (!altRoutePath || altRoutePath.length === 0) {
+      setAnimatedAltPath([]);
+      return;
+    }
+
+    let currentIndex = 0;
+    setAnimatedAltPath([]);
+    let frame: number;
+
+    const animate = () => {
+      currentIndex = Math.min(currentIndex + POINTS_PER_FRAME, altRoutePath.length);
+      setAnimatedAltPath(altRoutePath.slice(0, currentIndex));
+      if (currentIndex < altRoutePath.length) {
+        frame = requestAnimationFrame(animate);
+      }
+    };
+    frame = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(frame);
+  }, [altRoutePath]);
+
   // Fit bounds to route
   useEffect(() => {
     if (!mapRef.current || routePath.length === 0) return;
-    if (isNavigating) return; // Don't fit bounds during navigation
+    if (isNavigating) return;
     const bounds = new google.maps.LatLngBounds();
     routePath.forEach((p) => bounds.extend(p));
     if (altRoutePath) altRoutePath.forEach((p) => bounds.extend(p));
@@ -54,14 +134,12 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
   useEffect(() => {
     if (!mapRef.current) return;
     if (isNavigating && !prevNavigating.current) {
-      // Just started navigating — zoom in with tilt
       mapRef.current.setZoom(17);
       mapRef.current.setTilt(45);
       if (userPosition) mapRef.current.panTo(userPosition);
       else if (origin) mapRef.current.panTo(origin);
     }
     if (!isNavigating && prevNavigating.current) {
-      // Navigation stopped — reset rotation and tilt
       mapRef.current.setHeading(0);
       mapRef.current.setTilt(0);
     }
@@ -75,7 +153,6 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
     if (mapRef.current.getZoom()! < 16) {
       mapRef.current.setZoom(17);
     }
-    // Rotate map to match heading
     if (heading != null) {
       mapRef.current.setHeading(heading);
       mapRef.current.setTilt(45);
@@ -96,7 +173,17 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
       options={MAP_OPTIONS}
       onLoad={onLoad}
     >
-      {/* Traffic layer removed — route calculation still uses traffic data */}
+      {/* Satellite / Map toggle button */}
+      <div className="absolute top-4 right-4 z-10">
+        <button
+          onClick={() => setIsSatellite(!isSatellite)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-background/90 backdrop-blur-sm border border-border/60 shadow-lg text-xs font-medium text-foreground hover:bg-muted/80 transition-colors"
+          title={isSatellite ? 'Vista mapa' : 'Vista satélite'}
+        >
+          {isSatellite ? <Map className="h-3.5 w-3.5" /> : <Satellite className="h-3.5 w-3.5" />}
+          {isSatellite ? 'Mapa' : 'Satélite'}
+        </button>
+      </div>
 
       {/* ZBE Zones */}
       {zbeZones.features.map((feature) => {
@@ -199,11 +286,11 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
         />
       )}
 
-      {/* Alternative route (shown behind main route, dashed green) */}
-      {altRoutePath && altRoutePath.length > 0 && (
+      {/* Alternative route (animated, dashed green) */}
+      {animatedAltPath.length > 0 && (
         <>
           <Polyline
-            path={altRoutePath}
+            path={animatedAltPath}
             options={{
               strokeColor: '#22c55e',
               strokeOpacity: 0.25,
@@ -211,7 +298,7 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
             }}
           />
           <Polyline
-            path={altRoutePath}
+            path={animatedAltPath}
             options={{
               strokeColor: '#22c55e',
               strokeOpacity: 0.7,
@@ -226,11 +313,11 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
         </>
       )}
 
-      {/* Main route */}
-      {routePath.length > 0 && (
+      {/* Main route (animated) */}
+      {animatedPath.length > 0 && (
         <>
           <Polyline
-            path={routePath}
+            path={animatedPath}
             options={{
               strokeColor: routeColor,
               strokeOpacity: 0.3,
@@ -238,7 +325,7 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
             }}
           />
           <Polyline
-            path={routePath}
+            path={animatedPath}
             options={{
               strokeColor: routeColor,
               strokeOpacity: 0.9,
@@ -247,6 +334,7 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
           />
         </>
       )}
+
       {/* User position marker during navigation */}
       {isNavigating && userPosition && (
         <Marker
@@ -283,13 +371,13 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
         />
       ))}
 
-      {/* Radar markers - show near route or at high zoom */}
+      {/* Radar markers near route */}
       {routePath.length > 0 && (() => {
         try {
           const routeLine = turf.lineString(routePath.map(p => [p.lng, p.lat]));
           return radaresSpain.filter(r => {
             const dist = turf.pointToLineDistance(turf.point([r.lng, r.lat]), routeLine, { units: 'meters' });
-            return dist < 3000; // Only show radars within 3km of route
+            return dist < 3000;
           }).map(radar => (
             <Marker
               key={radar.id}
