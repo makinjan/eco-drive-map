@@ -1,9 +1,10 @@
-import { Navigation, X, Locate, Volume2, VolumeX, ArrowUp, ArrowLeft, ArrowRight, CornerUpRight, CornerUpLeft, Search, Mic, MicOff, Fuel, UtensilsCrossed } from 'lucide-react';
+import { Navigation, X, Locate, Volume2, VolumeX, ArrowUp, ArrowLeft, ArrowRight, CornerUpRight, CornerUpLeft, Search, Mic, MicOff, Fuel, UtensilsCrossed, Radar } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import SearchInput, { type PlaceResult } from './SearchInput';
 import RouteServices from './RouteServices';
 import type { NavigationStep } from '@/hooks/use-navigation';
+import type { RadarPoint } from '@/data/radares-spain';
 
 interface NavigationOverlayProps {
   distanceRemaining: number | null;
@@ -22,6 +23,7 @@ interface NavigationOverlayProps {
   destName?: string;
   routePath: { lat: number; lng: number }[];
   routeStatus: string;
+  nearbyRadar?: { radar: RadarPoint; distance: number } | null;
 }
 
 const ManeuverIcon = ({ maneuver }: { maneuver?: string }) => {
@@ -51,6 +53,7 @@ const NavigationOverlay = ({
   destName,
   routePath,
   routeStatus,
+  nearbyRadar,
 }: NavigationOverlayProps) => {
   const [muted, setMuted] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -204,6 +207,31 @@ const NavigationOverlay = ({
           </div>
         )}
       </div>
+
+      {/* Radar alert banner */}
+      {nearbyRadar && (
+        <div className="absolute left-4 right-4 z-30 animate-in slide-in-from-top-4 fade-in duration-300"
+          style={{ top: currentStep ? '110px' : '60px' }}
+        >
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-destructive/95 text-white shadow-lg backdrop-blur-sm">
+            <div className="shrink-0 flex items-center justify-center w-11 h-11 rounded-full bg-white/20">
+              <Radar className="h-6 w-6" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold leading-tight">
+                {nearbyRadar.radar.type === 'tramo' ? 'Radar de tramo' : 'Radar fijo'} — {nearbyRadar.radar.road}
+              </p>
+              <p className="text-xs text-white/80 mt-0.5">
+                km {nearbyRadar.radar.km} · a {nearbyRadar.distance < 1000 ? `${Math.round(nearbyRadar.distance)} m` : `${(nearbyRadar.distance / 1000).toFixed(1)} km`}
+              </p>
+            </div>
+            <div className="shrink-0 flex flex-col items-center justify-center w-14 h-14 rounded-full border-[3px] border-white bg-white/15">
+              <span className="text-lg font-black leading-none">{nearbyRadar.radar.speed_limit}</span>
+              <span className="text-[8px] font-semibold leading-none mt-0.5">km/h</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom bar - ETA, distance, speed */}
       <div className="absolute bottom-0 left-0 right-0 z-20">
