@@ -46,8 +46,12 @@ export function usePermissions() {
     }
   };
 
+  // IMPORTANTE: Secuencial, no paralelo.
+  // Promise.all rompe la cadena del gesto del usuario en Android WebView,
+  // lo que impide que aparezcan los diálogos nativos de permisos.
   const requestAll = async () => {
-    await Promise.all([requestLocationPermission(), requestMicrophonePermission()]);
+    await requestLocationPermission();
+    await requestMicrophonePermission();
   };
 
   // Consultar estado inicial de permisos (Permissions API)
