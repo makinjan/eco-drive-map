@@ -1,4 +1,4 @@
-import { MapPin, Mic, CheckCircle2, AlertCircle } from 'lucide-react';
+import { MapPin, Mic, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useState } from 'react';
@@ -19,16 +19,13 @@ export function PermissionsGate({ onContinue }: PermissionsGateProps) {
   const micOk = permissions.microphone === 'granted';
   const allGranted = locationOk && micOk;
 
-  // CRÍTICO: No hacer NADA antes de requestAll() para mantener el contexto
-  // del gesto del usuario en Android WebView y disparar los diálogos nativos.
+  // CRÍTICO: requestAll debe ser la PRIMERA await dentro del handler.
+  // Cualquier setState o lógica ANTES de la primera await rompe la cadena
+  // de gesto del usuario en Android WebView, impidiendo los diálogos nativos.
   const handleRequest = async () => {
-    // Llamar directamente sin setState previo: preserva la cadena de gesto
     await requestAll();
+    // Solo después de requestAll podemos actualizar estado
     setRequesting(false);
-    // Si todos los permisos están concedidos, continuar automáticamente
-    if (permissions.location === 'granted' && permissions.microphone === 'granted') {
-      onContinue();
-    }
   };
 
   return (
@@ -72,8 +69,16 @@ export function PermissionsGate({ onContinue }: PermissionsGateProps) {
             onClick={handleRequest}
             disabled={requesting}
           >
-            {requesting ? 'Solicitando permisos...' : 'Conceder permisos'}
+            {requesting ? (
+              <>
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                Solicitando permisos...
+              </>
+            ) : (
+              'Conceder permisos'
+            )}
           </Button>
+          {/* Botón continuar siempre visible */}
           <Button
             variant="ghost"
             className="w-full text-muted-foreground text-xs"
@@ -81,6 +86,12 @@ export function PermissionsGate({ onContinue }: PermissionsGateProps) {
           >
             Continuar sin algunos permisos (funcionalidad limitada)
           </Button>
+          {/* Si ya se concedió ubicación pero no micrófono, permitir continuar */}
+          {locationOk && !micOk && (
+            <p className="text-xs text-center text-muted-foreground">
+              Ubicación concedida ✓ — El micrófono es opcional para la navegación básica.
+            </p>
+          )}
         </div>
       )}
 
