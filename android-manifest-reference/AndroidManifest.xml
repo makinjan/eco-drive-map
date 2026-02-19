@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  INSTRUCCIONES:
+  Copia el contenido de los bloques <uses-permission> en:
+  android/app/src/main/AndroidManifest.xml
+  después de ejecutar: npx cap add android
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- =============================================
+         PERMISOS DE RED (obligatorio para Google Maps)
+         ============================================= -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- =============================================
+         PERMISOS DE LOCALIZACIÓN GPS (navegación)
+         ============================================= -->
+    <!-- Localización aproximada (requerida antes de pedir precisión) -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Localización precisa GPS -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Localización en segundo plano (para alertas de proximidad ZBE) -->
+    <!-- NOTA: Google Play requiere justificación especial para este permiso -->
+    <!-- Descomenta solo si realmente necesitas rastreo en background -->
+    <!-- <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" /> -->
+
+    <!-- =============================================
+         PERMISOS DE MICRÓFONO (reconocimiento de voz)
+         ============================================= -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- =============================================
+         PERMISOS DE PANTALLA (Wake Lock para navegación)
+         ============================================= -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- =============================================
+         PERMISOS DE VIBRACIÓN (alertas de radares/ZBE)
+         ============================================= -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- =============================================
+         FILTROS DE HARDWARE (opcionales, mejoran búsqueda en Play Store)
+         ============================================= -->
+    <!-- La app requiere GPS -->
+    <uses-feature android:name="android.hardware.location.gps" android:required="true" />
+    <!-- La app requiere micrófono -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="true">
+
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:name=".MainActivity"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:windowSoftInputMode="adjustResize">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
+</manifest>
