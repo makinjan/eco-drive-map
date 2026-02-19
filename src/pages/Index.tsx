@@ -5,7 +5,7 @@ import { useWakeLock } from '@/hooks/use-wake-lock';
 import { useNavigation } from '@/hooks/use-navigation';
 import { useVoiceInput, parseVoiceCommand } from '@/hooks/use-voice-input';
 import { useOnlineStatus } from '@/hooks/use-online-status';
-import { LoadScript } from '@react-google-maps/api';
+import { useGoogleMapsLoader } from '@/lib/google-maps-loader';
 import MapView from '@/components/MapView';
 import type { RoutePOI } from '@/components/MapView';
 import NavigationOverlay from '@/components/NavigationOverlay';
@@ -24,8 +24,6 @@ import { useRouteHistory, useFavorites } from '@/hooks/use-route-history';
 
 type RouteStatus = 'idle' | 'loading' | 'valid' | 'invalid' | 'no-route';
 
-const LIBRARIES: ('places')[] = ['places'];
-
 interface RouteInfo {
   path: { lat: number; lng: number }[];
   duration: number | null;
@@ -34,6 +32,7 @@ interface RouteInfo {
 }
 
 const Index = () => {
+  const { isLoaded: mapsLoaded } = useGoogleMapsLoader();
   const isOnline = useOnlineStatus();
   const [selectedTag, setSelectedTag] = useState(() => {
     return localStorage.getItem('zbe-user-tag') || 'C';
@@ -284,7 +283,8 @@ const Index = () => {
         } else {
           speak('Ruta libre de restricciones para tu etiqueta.');
         }
-        searchPOIsAlongRoute(routeInfos[0].path);
+        // Defer POI search so it doesn't block the route result UI
+        setTimeout(() => searchPOIsAlongRoute(routeInfos[0].path), 500);
         addToHistory(
           { name: origin.name, coordinates: origin.coordinates },
           { name: destination.name, coordinates: destination.coordinates },
@@ -724,58 +724,68 @@ const Index = () => {
     onShareRoute: handleShareRoute,
   };
 
+  if (!mapsLoaded) {
+    return (
+      <div className="flex items-center justify-center w-screen h-screen bg-background">
+        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <span className="text-sm font-medium">Cargando mapa...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={LIBRARIES} language="es">
-      <div className="relative w-screen h-screen overflow-hidden">
-        {/* Offline banner */}
-        {!isOnline && (
-          <div className="absolute top-0 left-0 right-0 z-50 bg-amber-600 text-white text-center py-2 px-4 text-sm font-medium flex items-center justify-center gap-2 shadow-lg">
-            <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636a9 9 0 11-12.728 0M12 9v4m0 4h.01" />
-            </svg>
-            Sin conexión — Usando datos en caché
-          </div>
-        )}
-          <MapView
-            origin={origin?.coordinates ?? null}
-            destination={destination?.coordinates ?? null}
+    <div className="relative w-screen h-screen overflow-hidden">
+      {/* Offline banner */}
+      {!isOnline && (
+        <div className="absolute top-0 left-0 right-0 z-50 bg-destructive/90 text-destructive-foreground text-center py-2 px-4 text-sm font-medium flex items-center justify-center gap-2 shadow-lg">
+          <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636a9 9 0 11-12.728 0M12 9v4m0 4h.01" />
+          </svg>
+          Sin conexión — Usando datos en caché
+        </div>
+      )}
+        <MapView
+          origin={origin?.coordinates ?? null}
+          destination={destination?.coordinates ?? null}
+          routePath={routePath}
+          routeStatus={routeStatus}
+          altRoutePath={altRoute?.path ?? null}
+          isNavigating={nav.isNavigating}
+          userPosition={nav.userPosition}
+          heading={nav.heading}
+          pois={[...routePOIs, ...zbeParkings]}
+        />
+      {nav.isNavigating && (
+        <>
+          <NavigationOverlay
+            distanceRemaining={nav.distanceRemaining}
+            timeRemaining={nav.timeRemaining}
+            speed={nav.speed}
+            progressPercent={nav.progressPercent}
+            error={nav.error}
+            onStop={nav.stopNavigation}
+            currentStep={nav.steps[nav.currentStepIndex] ?? null}
+            nextStep={nav.steps[nav.currentStepIndex + 1] ?? null}
+            distanceToNextStep={nav.distanceToNextStep}
+            onVoiceCommand={handleVoiceCommand}
+            isVoiceListening={voiceCommand.isListening}
+            onDestinationSelect={setDestination}
+            onDestinationClear={handleDestClear}
+            destName={destination?.name}
             routePath={routePath}
             routeStatus={routeStatus}
-            altRoutePath={altRoute?.path ?? null}
-            isNavigating={nav.isNavigating}
-            userPosition={nav.userPosition}
-            heading={nav.heading}
-            pois={[...routePOIs, ...zbeParkings]}
+            nearbyRadar={nearbyRadar}
           />
-        {nav.isNavigating && (
-          <>
-            <NavigationOverlay
-              distanceRemaining={nav.distanceRemaining}
-              timeRemaining={nav.timeRemaining}
-              speed={nav.speed}
-              progressPercent={nav.progressPercent}
-              error={nav.error}
-              onStop={nav.stopNavigation}
-              currentStep={nav.steps[nav.currentStepIndex] ?? null}
-              nextStep={nav.steps[nav.currentStepIndex + 1] ?? null}
-              distanceToNextStep={nav.distanceToNextStep}
-              onVoiceCommand={handleVoiceCommand}
-              isVoiceListening={voiceCommand.isListening}
-              onDestinationSelect={setDestination}
-              onDestinationClear={handleDestClear}
-              destName={destination?.name}
-              routePath={routePath}
-              routeStatus={routeStatus}
-              nearbyRadar={nearbyRadar}
-            />
-          </>
-        )}
-        {!nav.isNavigating && (
-          isMobile ? <MobilePanel {...panelProps} /> : <Sidebar {...panelProps} />
-        )}
-      </div>
-    </LoadScript>
+        </>
+      )}
+      {!nav.isNavigating && (
+        isMobile ? <MobilePanel {...panelProps} /> : <Sidebar {...panelProps} />
+      )}
+    </div>
   );
 };
+
 
 export default Index;

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect, useState } from 'react';
+import { useCallback, useRef, useEffect, useState, useMemo, memo } from 'react';
 import { GoogleMap, Polygon, Marker, Polyline, InfoWindow } from '@react-google-maps/api';
 import { SPAIN_CENTER, INITIAL_ZOOM, MAP_OPTIONS } from '@/lib/google-maps-config';
 import { zbeZones, type ZBEProperties } from '@/data/zbe-zones';
@@ -30,7 +30,15 @@ interface MapViewProps {
 const ANIMATION_STEP_MS = 8;
 const POINTS_PER_FRAME = 15;
 
-const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, isNavigating, userPosition, heading, pois = [], showTraffic = true }: MapViewProps) => {
+// Pre-computed ZBE polygon data to avoid recalculating on every render
+const ZBE_POLYGONS = zbeZones.features.map((feature) => ({
+  id: feature.properties.id,
+  coords: feature.geometry.coordinates[0].map(([lng, lat]) => ({ lat, lng })),
+  isZBEDEP: feature.properties.id.startsWith('ZBEDEP'),
+  properties: feature.properties,
+}));
+
+const MapView = memo(({ origin, destination, routePath, routeStatus, altRoutePath, isNavigating, userPosition, heading, pois = [], showTraffic = true }: MapViewProps) => {
   const mapRef = useRef<google.maps.Map | null>(null);
   const [selectedZone, setSelectedZone] = useState<{
     position: google.maps.LatLngLiteral;
@@ -165,6 +173,20 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
     routeStatus === 'invalid' ? '#ef4444' :
     '#4285f4';
 
+  // Memoize radar markers — expensive turf calculation, only recompute when routePath changes
+  const nearbyRadarMarkers = useMemo(() => {
+    if (routePath.length < 2) return [];
+    try {
+      const routeLine = turf.lineString(routePath.map(p => [p.lng, p.lat]));
+      return radaresSpain.filter(r => {
+        const dist = turf.pointToLineDistance(turf.point([r.lng, r.lat]), routeLine, { units: 'meters' });
+        return dist < 3000;
+      });
+    } catch {
+      return [];
+    }
+  }, [routePath]);
+
   return (
     <GoogleMap
       mapContainerClassName="w-full h-full"
@@ -185,41 +207,37 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
         </button>
       </div>
 
-      {/* ZBE Zones */}
-      {zbeZones.features.map((feature) => {
-        const coords = feature.geometry.coordinates[0].map(([lng, lat]) => ({ lat, lng }));
-        const isZBEDEP = feature.properties.id.startsWith('ZBEDEP');
-        return (
-          <Polygon
-            key={feature.properties.id}
-            paths={coords}
-            options={{
-              fillColor: isZBEDEP ? '#7c3aed' : '#ef4444',
-              fillOpacity: isZBEDEP ? 0.25 : 0.15,
-              strokeColor: isZBEDEP ? '#6d28d9' : '#dc2626',
-              strokeWeight: isZBEDEP ? 3 : 2,
-              strokeOpacity: 0.85,
-              clickable: true,
-              ...(isZBEDEP && {
-                strokeWeight: 3,
-                icons: [{
-                  icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 2 },
-                  offset: '0',
-                  repeat: '10px',
-                }] as any,
-              }),
-            }}
-            onClick={(e) => {
-              if (e.latLng) {
-                setSelectedZone({
-                  position: { lat: e.latLng.lat(), lng: e.latLng.lng() },
-                  props: feature.properties,
-                });
-              }
-            }}
-          />
-        );
-      })}
+      {/* ZBE Zones — pre-computed, no recalc on render */}
+      {ZBE_POLYGONS.map(({ id, coords, isZBEDEP, properties }) => (
+        <Polygon
+          key={id}
+          paths={coords}
+          options={{
+            fillColor: isZBEDEP ? '#7c3aed' : '#ef4444',
+            fillOpacity: isZBEDEP ? 0.25 : 0.15,
+            strokeColor: isZBEDEP ? '#6d28d9' : '#dc2626',
+            strokeWeight: isZBEDEP ? 3 : 2,
+            strokeOpacity: 0.85,
+            clickable: true,
+            ...(isZBEDEP && {
+              strokeWeight: 3,
+              icons: [{
+                icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 2 },
+                offset: '0',
+                repeat: '10px',
+              }] as any,
+            }),
+          }}
+          onClick={(e) => {
+            if (e.latLng) {
+              setSelectedZone({
+                position: { lat: e.latLng.lat(), lng: e.latLng.lng() },
+                props: properties,
+              });
+            }
+          }}
+        />
+      ))}
 
       {selectedZone && (
         <InfoWindow
@@ -371,32 +389,26 @@ const MapView = ({ origin, destination, routePath, routeStatus, altRoutePath, is
         />
       ))}
 
-      {/* Radar markers near route */}
-      {routePath.length > 0 && (() => {
-        try {
-          const routeLine = turf.lineString(routePath.map(p => [p.lng, p.lat]));
-          return radaresSpain.filter(r => {
-            const dist = turf.pointToLineDistance(turf.point([r.lng, r.lat]), routeLine, { units: 'meters' });
-            return dist < 3000;
-          }).map(radar => (
-            <Marker
-              key={radar.id}
-              position={{ lat: radar.lat, lng: radar.lng }}
-              icon={{
-                path: 'M -6,-6 L 6,-6 L 6,6 L -6,6 Z',
-                scale: 1,
-                fillColor: '#ef4444',
-                fillOpacity: 0.95,
-                strokeColor: '#fff',
-                strokeWeight: 1.5,
-              }}
-              title={`${radar.type === 'tramo' ? 'Radar tramo' : 'Radar fijo'} — ${radar.road} km ${radar.km} — ${radar.speed_limit} km/h`}
-            />
-          ));
-        } catch { return null; }
-      })()}
+      {/* Radar markers near route — memoized, no turf on every render */}
+      {nearbyRadarMarkers.map(radar => (
+        <Marker
+          key={radar.id}
+          position={{ lat: radar.lat, lng: radar.lng }}
+          icon={{
+            path: 'M -6,-6 L 6,-6 L 6,6 L -6,6 Z',
+            scale: 1,
+            fillColor: '#ef4444',
+            fillOpacity: 0.95,
+            strokeColor: '#fff',
+            strokeWeight: 1.5,
+          }}
+          title={`${radar.type === 'tramo' ? 'Radar tramo' : 'Radar fijo'} — ${radar.road} km ${radar.km} — ${radar.speed_limit} km/h`}
+        />
+      ))}
     </GoogleMap>
   );
-};
+});
+
+MapView.displayName = 'MapView';
 
 export default MapView;
