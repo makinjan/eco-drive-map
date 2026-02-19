@@ -5,10 +5,15 @@ interface PermissionsState {
   microphone: PermissionState | 'unknown';
 }
 
+// Detecta si estamos en Capacitor nativo
+const isNative = () =>
+  typeof (window as any).Capacitor !== 'undefined' &&
+  (window as any).Capacitor?.isNativePlatform?.() === true;
+
 /**
  * Hook para solicitar y monitorizar permisos de localización y micrófono.
- * En Android (Capacitor) los permisos se solicitan en runtime.
- * En el navegador usa la Permissions API estándar.
+ * En Android (Capacitor) usa el plugin @capacitor/geolocation para disparar
+ * los diálogos nativos del sistema. En navegador usa la Permissions API estándar.
  */
 export function usePermissions() {
   const [permissions, setPermissions] = useState<PermissionsState>({
@@ -17,6 +22,22 @@ export function usePermissions() {
   });
 
   const requestLocationPermission = async (): Promise<boolean> => {
+    if (isNative()) {
+      try {
+        // Usar el plugin Capacitor para disparar el diálogo nativo
+        const { Geolocation } = await import('@capacitor/geolocation');
+        const status = await Geolocation.requestPermissions();
+        const granted = status.location === 'granted' || status.coarseLocation === 'granted';
+        setPermissions((p) => ({ ...p, location: granted ? 'granted' : 'denied' }));
+        return granted;
+      } catch (err) {
+        console.error('[Permissions] Error requesting location (native):', err);
+        setPermissions((p) => ({ ...p, location: 'denied' }));
+        return false;
+      }
+    }
+
+    // Fallback navegador: usa geolocation API estándar
     return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
         () => {
@@ -35,6 +56,24 @@ export function usePermissions() {
   };
 
   const requestMicrophonePermission = async (): Promise<boolean> => {
+    if (isNative()) {
+      try {
+        // En Capacitor nativo, getUserMedia dispara el diálogo nativo de micrófono
+        // siempre que se llame directamente desde un gesto del usuario
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((t) => t.stop());
+        setPermissions((p) => ({ ...p, microphone: 'granted' }));
+        return true;
+      } catch (err: any) {
+        console.error('[Permissions] Error requesting microphone (native):', err);
+        // Si falla getUserMedia en nativo, lo marcamos como concedido de todas formas
+        // (el sistema puede haberlo bloqueado previamente o no estar disponible en emulador)
+        setPermissions((p) => ({ ...p, microphone: 'denied' }));
+        return false;
+      }
+    }
+
+    // Fallback navegador
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => t.stop());
@@ -57,8 +96,21 @@ export function usePermissions() {
   // Consultar estado inicial de permisos (Permissions API)
   useEffect(() => {
     const check = async () => {
-      if (!('permissions' in navigator)) return;
+      // En nativo: intentar con Capacitor Geolocation para ver estado
+      if (isNative()) {
+        try {
+          const { Geolocation } = await import('@capacitor/geolocation');
+          const status = await Geolocation.checkPermissions();
+          const locGranted = status.location === 'granted' || status.coarseLocation === 'granted';
+          setPermissions((p) => ({ ...p, location: locGranted ? 'granted' : 'prompt' }));
+        } catch {
+          // Silencioso
+        }
+        return;
+      }
 
+      // Navegador: usa Permissions API
+      if (!('permissions' in navigator)) return;
       try {
         const [loc, mic] = await Promise.all([
           navigator.permissions.query({ name: 'geolocation' }),
