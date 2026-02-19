@@ -19,10 +19,16 @@ export function PermissionsGate({ onContinue }: PermissionsGateProps) {
   const micOk = permissions.microphone === 'granted';
   const allGranted = locationOk && micOk;
 
+  // El handler debe llamar directamente a requestAll sin operaciones previas
+  // para mantener el contexto del gesto del usuario en Android WebView
   const handleRequest = async () => {
     setRequesting(true);
     await requestAll();
     setRequesting(false);
+    // Si todos los permisos están concedidos, continuar automáticamente
+    if (permissions.location === 'granted' && permissions.microphone === 'granted') {
+      onContinue();
+    }
   };
 
   return (
