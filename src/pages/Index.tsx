@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
 import type { RadarPoint } from '@/data/radares-spain';
 import { useZBEProximity } from '@/hooks/use-zbe-proximity';
 import { useWakeLock } from '@/hooks/use-wake-lock';
@@ -9,8 +9,8 @@ import { useGoogleMapsLoader } from '@/lib/google-maps-loader';
 import MapView from '@/components/MapView';
 import type { RoutePOI } from '@/components/MapView';
 import NavigationOverlay from '@/components/NavigationOverlay';
-import Sidebar from '@/components/Sidebar';
-import MobilePanel from '@/components/MobilePanel';
+const Sidebar = lazy(() => import('@/components/Sidebar'));
+const MobilePanel = lazy(() => import('@/components/MobilePanel'));
 import { useIsMobile } from '@/hooks/use-mobile';
 import { GOOGLE_MAPS_API_KEY } from '@/lib/google-maps-config';
 import { validateRoute } from '@/lib/route-validator';
@@ -723,7 +723,9 @@ const Index = () => {
         </>
       )}
       {!nav.isNavigating && (
-        isMobile ? <MobilePanel {...panelProps} /> : <Sidebar {...panelProps} />
+        <Suspense fallback={null}>
+          {isMobile ? <MobilePanel {...panelProps} /> : <Sidebar {...panelProps} />}
+        </Suspense>
       )}
     </div>
   );
