@@ -28,6 +28,7 @@ const SearchInput = ({ placeholder, onSelect, onClear, icon = 'origin', autoGeol
   const [results, setResults] = useState<Suggestion[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [geolocating, setGeolocating] = useState(false);
+  const [searching, setSearching] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const containerRef = useRef<HTMLDivElement>(null);
   const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
@@ -98,8 +99,10 @@ const SearchInput = ({ placeholder, onSelect, onClear, icon = 'origin', autoGeol
   const search = async (q: string) => {
     if (q.length < 3) {
       setResults([]);
+      setSearching(false);
       return;
     }
+    setSearching(true);
     try {
       const { suggestions } =
         await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
@@ -126,13 +129,15 @@ const SearchInput = ({ placeholder, onSelect, onClear, icon = 'origin', autoGeol
     } catch (err) {
       console.error('Autocomplete error:', err);
       setResults([]);
+    } finally {
+      setSearching(false);
     }
   };
 
   const handleChange = (value: string) => {
     setQuery(value);
     clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => search(value), 300);
+    timeoutRef.current = setTimeout(() => search(value), 350);
   };
 
   const handleSelect = async (suggestion: Suggestion) => {
@@ -170,7 +175,7 @@ const SearchInput = ({ placeholder, onSelect, onClear, icon = 'origin', autoGeol
             placeholder={geolocating ? 'Localizando...' : placeholder}
             className="pl-8 pr-8 h-10 bg-muted/50 border-border/60 rounded-xl text-sm placeholder:text-muted-foreground/60 focus:bg-background focus:border-primary/40 transition-colors"
           />
-          {query && (
+          {query && !searching && (
             <button
               type="button"
               onClick={() => {
@@ -183,6 +188,9 @@ const SearchInput = ({ placeholder, onSelect, onClear, icon = 'origin', autoGeol
             >
               <X className="h-3.5 w-3.5" />
             </button>
+          )}
+          {searching && (
+            <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
           )}
         </div>
         {icon === 'origin' && (
