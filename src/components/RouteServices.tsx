@@ -1,7 +1,6 @@
 import { Fuel, UtensilsCrossed, Loader2, Plus, ParkingCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState, useCallback, useRef } from 'react';
-import { speak } from '@/lib/speak';
+import { useState, useCallback } from 'react';
 
 interface NearestPOI {
   name: string;
@@ -19,80 +18,15 @@ interface RouteServicesProps {
 const RouteServices = ({ routePath, isVisible, onAddToRoute, destination }: RouteServicesProps) => {
   const [loadingType, setLoadingType] = useState<string | null>(null);
   const [result, setResult] = useState<{ type: string; poi: NearestPOI } | null>(null);
-  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
-  const recognitionRef = useRef<any>(null);
 
   const formatDist = (meters: number) =>
     meters >= 1000 ? `${(meters / 1000).toFixed(1)} kilómetros` : `${meters} metros`;
 
-  const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch {}
-      recognitionRef.current = null;
-    }
-    setAwaitingConfirmation(false);
-  }, []);
-
-  const listenForConfirmation = useCallback((poi: NearestPOI, label: string) => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      // No speech recognition available, just show the button
-      return;
-    }
-
-    setAwaitingConfirmation(true);
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'es-ES';
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 3;
-    recognitionRef.current = recognition;
-
-    recognition.onresult = (event: any) => {
-      const results = event.results[0];
-      let said = '';
-      for (let i = 0; i < results.length; i++) {
-        said += ' ' + results[i].transcript.toLowerCase();
-      }
-      said = said.trim();
-
-      const isYes = /\b(sí|si|vale|ok|claro|venga|añade|añadir|afirmativo|por supuesto)\b/.test(said);
-      const isNo = /\b(no|nada|cancelar|cancela|déjalo|dejalo|paso)\b/.test(said);
-
-      if (isYes && onAddToRoute) {
-        onAddToRoute({ coordinates: poi.position, name: poi.name });
-        speak(`${poi.name} añadido como destino. Recalculando ruta.`);
-        setResult(null);
-      } else if (isNo) {
-        speak('De acuerdo, no se añade.');
-        setResult(null);
-      } else {
-        speak('No te he entendido. Puedes pulsar el botón para añadirlo.');
-      }
-      setAwaitingConfirmation(false);
-    };
-
-    recognition.onerror = () => {
-      setAwaitingConfirmation(false);
-    };
-
-    recognition.onend = () => {
-      recognitionRef.current = null;
-      setAwaitingConfirmation(false);
-    };
-
-    // Small delay so the speech finishes before listening
-    setTimeout(() => {
-      try { recognition.start(); } catch {}
-    }, 3500);
-  }, [onAddToRoute]);
 
   const findNearest = useCallback(async (type: 'gas_station' | 'restaurant' | 'parking') => {
     if (routePath.length < 2) return;
     setLoadingType(type);
     setResult(null);
-    stopListening();
 
     try {
       // For parking, search near destination; otherwise near user
@@ -162,34 +96,26 @@ const RouteServices = ({ routePath, isVisible, onAddToRoute, destination }: Rout
 
       if (best) {
         setResult({ type: label, poi: best });
-        const distText = formatDist(best.distance);
-        const nearWhat = type === 'parking' ? 'de tu destino' : 'de tu posición';
-        speak(
-          `El ${label} más cercano es ${best.name}, a ${distText} ${nearWhat}. ¿Quieres añadirlo a la ruta?`
-        );
-        listenForConfirmation(best, label);
       } else {
         const labelPlural = type === 'gas_station' ? 'gasolineras' : type === 'restaurant' ? 'restaurantes' : 'parkings';
-        speak(`No se encontraron ${labelPlural} en 20 kilómetros.`);
+        
       }
     } catch (err) {
       console.error('POI search error:', err);
-      speak('Error al buscar servicios cercanos.');
+      
     } finally {
       setLoadingType(null);
     }
-  }, [routePath, destination, stopListening, listenForConfirmation]);
+  }, [routePath, destination]);
 
   const handleAddToRoute = useCallback(() => {
     if (!result || !onAddToRoute) return;
-    stopListening();
     onAddToRoute({
       coordinates: result.poi.position,
       name: result.poi.name,
     });
-    speak(`${result.poi.name} añadido como destino. Recalculando ruta.`);
     setResult(null);
-  }, [result, onAddToRoute, stopListening]);
+  }, [result, onAddToRoute]);
 
   if (!isVisible) return null;
 
@@ -250,11 +176,6 @@ const RouteServices = ({ routePath, isVisible, onAddToRoute, destination }: Rout
           <p className="text-[11px] text-muted-foreground">
             A {result.poi.distance >= 1000 ? `${(result.poi.distance / 1000).toFixed(1)} km` : `${result.poi.distance} m`} {result.type === 'parking' ? 'de tu destino' : 'de tu posición'}
           </p>
-          {awaitingConfirmation && (
-            <p className="text-[11px] text-primary animate-pulse font-medium">
-              🎙️ Escuchando... di "sí" o "no"
-            </p>
-          )}
           {onAddToRoute && (
             <Button
               variant="default"

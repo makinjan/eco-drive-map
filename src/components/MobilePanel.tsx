@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route, ParkingCircle, MapPin, Mic, MicOff, Car, Share2 } from 'lucide-react';
-import ThemeToggle from './ThemeToggle';
+import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, ChevronUp, ChevronDown, Route, ParkingCircle, MapPin, Car, Share2 } from 'lucide-react';
 import ProximityAlertBanner from './ProximityAlertBanner';
 import RouteServices from './RouteServices';
 import HistoryFavoritesPanel from './HistoryFavoritesPanel';
@@ -52,8 +51,6 @@ interface MobilePanelProps {
   destination: { lat: number; lng: number } | null;
   onStartNavigation: () => void;
   isNavigating: boolean;
-  onVoiceCommand: () => void;
-  isVoiceListening: boolean;
   originName?: string;
   destName?: string;
   routePath: { lat: number; lng: number }[];
@@ -94,8 +91,6 @@ const MobilePanel = ({
   destination,
   onStartNavigation,
   isNavigating,
-  onVoiceCommand,
-  isVoiceListening,
   originName,
   destName,
   routePath,
@@ -152,7 +147,7 @@ const MobilePanel = ({
               </div>
               <span className="text-sm font-bold text-foreground tracking-tight">ZBE Navigator</span>
             </div>
-            <ThemeToggle />
+            
           </div>
         </div>
 
@@ -180,16 +175,6 @@ const MobilePanel = ({
               </div>
             )}
 
-            <Button
-              onClick={onVoiceCommand}
-              variant="outline"
-              size="lg"
-              className={`w-full h-11 rounded-xl gap-2 ${isVoiceListening ? 'border-destructive/40 bg-destructive/10 text-destructive animate-pulse' : ''}`}
-              title="Comando de voz"
-            >
-              {isVoiceListening ? <MicOff className="h-4.5 w-4.5" /> : <Mic className="h-4.5 w-4.5" />}
-              {isVoiceListening ? 'Escuchando...' : 'Comando de voz'}
-            </Button>
 
             {/* History & Favorites */}
             {routeStatus === 'idle' && (
