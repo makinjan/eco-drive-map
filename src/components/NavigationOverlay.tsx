@@ -1,4 +1,4 @@
-import { Navigation, X, Locate, Volume2, VolumeX, ArrowUp, ArrowLeft, ArrowRight, CornerUpRight, CornerUpLeft, Search, Mic, MicOff, Fuel, UtensilsCrossed, Radar } from 'lucide-react';
+import { Navigation, X, Locate, Volume2, VolumeX, ArrowUp, ArrowLeft, ArrowRight, CornerUpRight, CornerUpLeft, Search, Radar } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import SearchInput, { type PlaceResult } from './SearchInput';
@@ -16,8 +16,6 @@ interface NavigationOverlayProps {
   currentStep: NavigationStep | null;
   nextStep: NavigationStep | null;
   distanceToNextStep: number | null;
-  onVoiceCommand: () => void;
-  isVoiceListening: boolean;
   onDestinationSelect: (place: PlaceResult) => void;
   onDestinationClear: () => void;
   destName?: string;
@@ -46,8 +44,6 @@ const NavigationOverlay = ({
   currentStep,
   nextStep,
   distanceToNextStep,
-  onVoiceCommand,
-  isVoiceListening,
   onDestinationSelect,
   onDestinationClear,
   destName,
@@ -178,15 +174,6 @@ const NavigationOverlay = ({
               externalValue={destName}
             />
             <div className="flex gap-2">
-              <Button
-                onClick={onVoiceCommand}
-                variant="outline"
-                size="sm"
-                className={`flex-1 rounded-lg gap-2 h-9 ${isVoiceListening ? 'border-destructive/40 bg-destructive/10 text-destructive animate-pulse' : ''}`}
-              >
-                {isVoiceListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-                {isVoiceListening ? 'Escuchando...' : 'Comando de voz'}
-              </Button>
               <Button
                 variant="ghost"
                 size="sm"

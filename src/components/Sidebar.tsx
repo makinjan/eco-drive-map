@@ -1,5 +1,4 @@
-import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, Route, MapPin, ParkingCircle, Mic, MicOff, Car, Share2 } from 'lucide-react';
-import ThemeToggle from './ThemeToggle';
+import { Navigation, AlertTriangle, CheckCircle2, XCircle, Loader2, Shield, Route, MapPin, ParkingCircle, Car, Share2 } from 'lucide-react';
 import RouteServices from './RouteServices';
 import ProximityAlertBanner from './ProximityAlertBanner';
 import HistoryFavoritesPanel from './HistoryFavoritesPanel';
@@ -51,8 +50,6 @@ interface SidebarProps {
   destination: { lat: number; lng: number } | null;
   onStartNavigation: () => void;
   isNavigating: boolean;
-  onVoiceCommand: () => void;
-  isVoiceListening: boolean;
   originName?: string;
   destName?: string;
   routePath: { lat: number; lng: number }[];
@@ -93,8 +90,6 @@ const Sidebar = ({
   destination,
   onStartNavigation,
   isNavigating,
-  onVoiceCommand,
-  isVoiceListening,
   originName,
   destName,
   routePath,
@@ -144,7 +139,7 @@ const Sidebar = ({
                 </p>
               </div>
             </div>
-            <ThemeToggle />
+            
           </div>
         </div>
 
@@ -191,16 +186,6 @@ const Sidebar = ({
             </div>
           )}
 
-          <Button
-            onClick={onVoiceCommand}
-            variant="outline"
-            size="lg"
-            className={`w-full h-11 rounded-xl gap-2 ${isVoiceListening ? 'border-destructive/40 bg-destructive/10 text-destructive animate-pulse' : ''}`}
-            title="Comando de voz: di tu destino"
-          >
-            {isVoiceListening ? <MicOff className="h-4.5 w-4.5" /> : <Mic className="h-4.5 w-4.5" />}
-            {isVoiceListening ? 'Escuchando...' : 'Comando de voz'}
-          </Button>
         </div>
 
         {/* History & Favorites */}

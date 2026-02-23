@@ -3,7 +3,7 @@ import type { RadarPoint } from '@/data/radares-spain';
 import { useZBEProximity } from '@/hooks/use-zbe-proximity';
 import { useWakeLock } from '@/hooks/use-wake-lock';
 import { useNavigation } from '@/hooks/use-navigation';
-import { useVoiceInput, parseVoiceCommand } from '@/hooks/use-voice-input';
+
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { useGoogleMapsLoader } from '@/lib/google-maps-loader';
 import MapView from '@/components/MapView';
@@ -627,60 +627,6 @@ const Index = () => {
 
   
 
-  const voiceCommand = useVoiceInput({
-    onResult: async (transcript) => {
-      toast.info(`🎤 "${transcript}"`);
-      const parsed = parseVoiceCommand(transcript);
-      if (!parsed) {
-        toast.error('No se entendió el comando. Prueba: "quiero ir a [dirección]"');
-        return;
-      }
-
-      if (parsed.origin) {
-        const originPlace = await geocodeAddress(parsed.origin);
-        if (originPlace) setOrigin(originPlace);
-        else toast.error(`No se encontró: "${parsed.origin}"`);
-      }
-
-      if (parsed.destination) {
-        const destPlace = await geocodeAddress(parsed.destination);
-        if (destPlace) {
-          setDestination(destPlace);
-          setDestination(destPlace);
-        } else {
-          toast.error(`No se encontró: "${parsed.destination}"`);
-        }
-      }
-    },
-    onError: (err) => toast.error(err),
-  });
-
-  // Auto-calculate when destination is set (or voice command)
-  useEffect(() => {
-    if (origin && destination) {
-      if (skipRecalcRef.current) {
-        skipRecalcRef.current = false;
-        return;
-      }
-      calculateRoute();
-    }
-  }, [origin, destination, calculateRoute]);
-
-  // Re-validate route when tag changes and a route exists
-  useEffect(() => {
-    if (origin && destination && routePath.length > 0) {
-      calculateRoute();
-    }
-  }, [selectedTag]);
-
-  const handleVoiceCommand = useCallback(() => {
-    if (voiceCommand.isListening) {
-      voiceCommand.stopListening();
-    } else {
-      voiceCommand.startListening();
-      toast.info('🎤 Escuchando... Di algo como "quiero ir a la calle Lima 13 en Granada"');
-    }
-  }, [voiceCommand]);
 
   const panelProps = {
     selectedTag,
@@ -703,8 +649,6 @@ const Index = () => {
     destination: destination?.coordinates ?? null,
     onStartNavigation: handleStartNavigation,
     isNavigating: nav.isNavigating,
-    onVoiceCommand: handleVoiceCommand,
-    isVoiceListening: voiceCommand.isListening,
     originName: origin?.name,
     destName: destination?.name,
     routePath,
@@ -769,8 +713,6 @@ const Index = () => {
             currentStep={nav.steps[nav.currentStepIndex] ?? null}
             nextStep={nav.steps[nav.currentStepIndex + 1] ?? null}
             distanceToNextStep={nav.distanceToNextStep}
-            onVoiceCommand={handleVoiceCommand}
-            isVoiceListening={voiceCommand.isListening}
             onDestinationSelect={setDestination}
             onDestinationClear={handleDestClear}
             destName={destination?.name}
